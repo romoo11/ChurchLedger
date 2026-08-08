@@ -172,6 +172,9 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .btn-gold{background:var(--gold);border-color:var(--gold);color:#20180A;font-weight:700;}
 .btn-gold:hover{background:#D6AC33;}
 .btn-navy{background:var(--navy);border-color:var(--navy);color:#fff;}
+.btn-danger{color:var(--expense);border-color:#E6C4BF;background:#fff;}
+.btn-danger:hover{background:#FBF0EE;}
+#editActions:not([hidden]){display:flex;}
 .btn-full{width:100%;padding:15px;font-size:15px;}
 .btn-sm{padding:6px 13px;font-size:12.5px;}
 
@@ -360,7 +363,7 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
 
     <section id="view-input" hidden>
       <div class="panel">
-        <h2>새 기록 <em>영수증을 받은 자리에서 바로 남기세요</em></h2>
+        <h2 id="inputTitle">새 기록 <em>영수증을 받은 자리에서 바로 남기세요</em></h2>
         <div class="pbody">
           <div class="field">
             <div class="kindseg" role="group" aria-label="수입 지출 구분">
@@ -391,6 +394,10 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
             <div class="drop" id="iDrop" tabindex="0" role="button">사진 촬영 또는 파일 첨부</div>
             <input type="file" id="iFile" accept="image/*,.pdf" hidden></div>
           <button class="btn btn-gold btn-full" id="btnSave">장부에 기록</button>
+          <div id="editActions" hidden style="gap:8px;margin-top:10px;">
+            <button class="btn" id="btnCancelEdit" style="flex:1">취소</button>
+            <button class="btn btn-danger" id="btnDeleteEdit" style="flex:1">이 기록 삭제</button>
+          </div>
         </div>
       </div>
     </section>
@@ -530,7 +537,8 @@ const onlyNum = s => parseInt(String(s).replace(/[^0-9]/g,''),10) || 0;
 
 let ST = { user:null, isAdmin:false, depts:{}, order:[], tx:[], cats:[] };
 let cur = { dept:null, view:'list', kind:'out', q:'', month:'all', kfilter:'all',
-            cat:'all', rcpt:'all', rperiod:'year', rmonth:new Date().getMonth()+1, file:null };
+            cat:'all', rcpt:'all', rperiod:'year', rmonth:new Date().getMonth()+1,
+            file:null, editId:null, editPath:null };
 
 function toast(m, isErr){
   const t = $('#toast');
@@ -1087,7 +1095,12 @@ function show(v){
     if(isAll()){ toast('전체 보기는 열람 전용입니다. 부서를 먼저 선택하세요'); return; }
     if(!dept().canWrite){ toast('이 부서에 기록할 권한이 없습니다'); return; }
     if(dept().closed){ toast(`${YEAR}년도가 마감되어 기록할 수 없습니다`); return; }
+    resetInput();
   }
+  if(v!=='input' && cur.editId) resetInput();
+  showRaw(v);
+}
+function showRaw(v){
   if(v==='setting' && isAll()){ toast('부서를 먼저 선택하세요'); return; }
   if(v==='admin' && !ST.isAdmin){ toast('관리자만 볼 수 있습니다'); return; }
   cur.view = v;
@@ -1150,12 +1163,67 @@ $('#listArea').addEventListener('click', async e=>{
   }
   const c = e.target.closest('.entry.clickable'); if(!c) return;
   const t = ST.tx.find(x=>x.id===c.dataset.id);
-  if(!confirm(`[${t.cat}] ${t.memo}\n${won(t.amount)}\n\n이 거래를 삭제할까요? 삭제 기록은 감사 로그에 남습니다.`)) return;
+  if(t) openEdit(t);
+});
+
+/* ═══════════ 기록 수정 ═══════════ */
+function openEdit(t){
+  const d = ST.depts[t.dept_id];
+  if(!d || !d.canWrite){ toast('이 부서를 수정할 권한이 없습니다'); return; }
+  if(d.closed){ toast('마감된 연도라 수정할 수 없습니다'); return; }
+
+  /* 전체 보기에서 눌렀다면 해당 부서로 이동 */
+  if(cur.dept !== t.dept_id){
+    cur.dept = t.dept_id; cur.cat = 'all';
+    renderBand(); renderCatFilter(); renderSummary(); renderMonthly();
+  }
+  cur.editId = t.id;
+  cur.editPath = t.receipt_path || null;
+  cur.file = null;
+
+  setKind(t.kind);
+  $('#iCat').value = t.category_id || '';
+  $('#iDate').value = t.date;
+  $('#iAmt').value = t.amount.toLocaleString('ko-KR');
+  $('#iMemo').value = t.memo || '';
+  $('#iVendor').value = t.vendor || '';
+
+  const drop = $('#iDrop');
+  if(t.receipt_path){
+    drop.textContent = '영수증 있음 · 새로 첨부하면 교체됩니다';
+    drop.classList.add('has');
+  }else{
+    drop.textContent = '사진 촬영 또는 파일 첨부';
+    drop.classList.remove('has');
+  }
+
+  $('#inputTitle').innerHTML = '기록 수정 <em>' + esc(d.name) + '</em>';
+  $('#btnSave').textContent = '수정 내용 저장';
+  $('#editActions').hidden = false;
+  showRaw('input');
+}
+function resetInput(){
+  cur.editId = null; cur.editPath = null; cur.file = null;
+  $('#iAmt').value=''; $('#iMemo').value=''; $('#iVendor').value='';
+  $('#iFile').value='';
+  $('#iDate').value = new Date().toISOString().slice(0,10);
+  $('#iDrop').textContent = '사진 촬영 또는 파일 첨부';
+  $('#iDrop').classList.remove('has');
+  $('#inputTitle').innerHTML = '새 기록 <em>영수증을 받은 자리에서 바로 남기세요</em>';
+  $('#btnSave').textContent = '장부에 기록';
+  $('#editActions').hidden = true;
+}
+$('#btnCancelEdit').addEventListener('click', ()=>{ resetInput(); show('list'); });
+$('#btnDeleteEdit').addEventListener('click', async ()=>{
+  const t = ST.tx.find(x=>x.id===cur.editId); if(!t) return;
+  if(!confirm(`[${t.cat}] ${t.memo}\n${won(t.amount)}\n\n이 기록을 삭제할까요? 삭제 기록은 감사 로그에 남습니다.`)) return;
   const { error } = await sb.from('acct_transactions').delete().eq('id', t.id);
   if(error){ toast('삭제 실패: '+error.message, true); return; }
   if(t.receipt_path) await sb.storage.from(BUCKET).remove([t.receipt_path]);
   ST.tx = ST.tx.filter(x=>x.id!==t.id);
-  renderSummary(); renderMonthly(); renderList();
+  resetInput();
+  renderSummary(); renderMonthly();
+  show('list');
   toast('삭제되었습니다');
 });
 
@@ -1208,37 +1276,51 @@ $('#btnSave').addEventListener('click', async ()=>{
   if(!category_id){ toast('과목을 선택하세요'); return; }
 
   const btn = $('#btnSave');
+  const editing = !!cur.editId;
   btn.disabled = true; btn.textContent = '저장 중…';
   try{
-    let receipt_path = null;
+    let receipt_path = editing ? cur.editPath : null;
+    let oldPath = null;
     if(cur.file){
       const f = await shrink(cur.file);
       const ext = (f.name.split('.').pop()||'jpg').toLowerCase();
-      receipt_path = `${cur.dept}/${YEAR}/${crypto.randomUUID()}.${ext}`;
-      const up = await sb.storage.from(BUCKET).upload(receipt_path, f, { contentType:f.type });
+      const np = `${cur.dept}/${YEAR}/${crypto.randomUUID()}.${ext}`;
+      const up = await sb.storage.from(BUCKET).upload(np, f, { contentType:f.type });
       if(up.error) throw up.error;
+      oldPath = receipt_path;
+      receipt_path = np;
     }
-    const { data, error } = await sb.from('acct_transactions').insert({
-      dept_id: cur.dept, txn_date, kind: cur.kind, category_id, amount,
-      memo: $('#iMemo').value.trim(), vendor: $('#iVendor').value.trim(), receipt_path
-    }).select().single();
+    const payload = { txn_date, kind: cur.kind, category_id, amount,
+      memo: $('#iMemo').value.trim(), vendor: $('#iVendor').value.trim(), receipt_path };
+
+    let data, error;
+    if(editing){
+      ({ data, error } = await sb.from('acct_transactions')
+        .update(payload).eq('id', cur.editId).select().single());
+    }else{
+      ({ data, error } = await sb.from('acct_transactions')
+        .insert({ dept_id: cur.dept, ...payload }).select().single());
+    }
     if(error) throw error;
+    if(oldPath) await sb.storage.from(BUCKET).remove([oldPath]);
 
     const catName = ST.cats.find(c=>c.id===category_id)?.name || '미분류';
-    ST.tx.push({ ...data, cat:catName, date:data.txn_date, file:!!data.receipt_path });
+    const rec = { ...data, cat:catName, date:data.txn_date, file:!!data.receipt_path };
+    if(editing) ST.tx = ST.tx.map(x=> x.id===rec.id ? rec : x);
+    else ST.tx.push(rec);
     ST.tx.sort((a,b)=> a.date.localeCompare(b.date));
 
-    $('#iAmt').value=''; $('#iMemo').value=''; $('#iVendor').value='';
-    cur.file=null; $('#iFile').value='';
-    $('#iDrop').textContent='사진 촬영 또는 파일 첨부'; $('#iDrop').classList.remove('has');
+    resetInput();
     renderSummary(); renderMonthly();
-    toast(`${cur.kind==='in'?'수입':'지출'} ${won(amount)} 기록 완료`);
+    toast(editing ? '수정 내용을 저장했습니다'
+                  : `${cur.kind==='in'?'수입':'지출'} ${won(amount)} 기록 완료`);
     show('list');
   }catch(err){
     const m = String(err.message||err);
     toast(m.includes('row-level security') ? '권한이 없거나 마감된 연도입니다' : '저장 실패: '+m, true);
   }finally{
-    btn.disabled = false; btn.textContent = '장부에 기록';
+    btn.disabled = false;
+    btn.textContent = cur.editId ? '수정 내용 저장' : '장부에 기록';
   }
 });
 
