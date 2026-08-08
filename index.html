@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>부서 회계 · 교회학교</title>
+<title>부서 회계 · 성산교회</title>
 <style>
 :root{
   --navy:#151A28; --navy-2:#242C42; --gold:#C8A02A; --gold-soft:#D9BC63; --gold-text:#A8842C;
@@ -24,6 +24,53 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .authcard{width:100%;max-width:360px;background:var(--card);border-radius:14px;padding:32px 28px;}
 .authcard h1{margin:0 0 4px;font-size:22px;letter-spacing:-0.04em;}
 .authcard p.sub{margin:0 0 24px;font-size:12.5px;color:var(--muted);}
+/* 대문 */
+.coverwrap{
+  min-height:100vh;background:var(--navy);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:0;
+}
+.coverbar{
+  width:100%;display:flex;align-items:center;justify-content:flex-end;gap:14px;
+  padding:14px 22px;color:#C9CCD6;font-size:13px;
+}
+.coverbar button{
+  background:none;border:0;padding:0;cursor:pointer;color:var(--gold-soft);
+  font-size:13px;text-decoration:underline;text-underline-offset:3px;
+}
+.coverstage{
+  flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+}
+.coverimg{
+  display:block;width:100%;max-width:1500px;height:auto;
+}
+.coverfallback{
+  width:100%;max-width:1500px;padding:80px 24px;text-align:center;color:#EDEEF2;
+}
+.coverfallback b{display:block;font-size:30px;letter-spacing:-0.04em;margin-bottom:10px;}
+.coverfallback span{font-size:14px;color:#9CA0AE;}
+.coveraction{
+  width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:26px 20px 40px;
+}
+.coveraction .enter{
+  padding:15px 64px;border-radius:999px;border:0;background:var(--gold);
+  color:#20180A;font-weight:700;font-size:16px;cursor:pointer;letter-spacing:-0.02em;
+  transition:background .15s,transform .1s;
+}
+.coveraction .enter:hover{background:#D6AC33;}
+.coveraction .enter:active{transform:translateY(1px);}
+.coveraction .hint{font-size:12px;color:#8B90A0;}
+.homelink{
+  background:none;border:0;padding:0;cursor:pointer;color:#9CA0AE;font-size:13px;
+  text-decoration:underline;text-underline-offset:3px;white-space:nowrap;
+}
+.homelink:hover{color:var(--gold-soft);}
+@media (max-width:760px){
+  .coverbar{padding:12px 15px;font-size:12px;}
+  .coveraction{padding:20px 16px 32px;}
+  .coveraction .enter{width:100%;max-width:320px;padding:15px 0;}
+}
+
 .authtabs{display:flex;gap:8px;margin-bottom:20px;}
 .authtabs button{
   flex:1;padding:9px 0;border-radius:999px;border:1px solid var(--line-2);
@@ -50,8 +97,9 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .pill-gold{background:var(--gold);border-color:var(--gold);color:#20180A;font-weight:700;}
 .pill-gold:hover{background:#D6AC33;}
 .pill:disabled{opacity:.4;cursor:not-allowed;}
-.userlink{margin-left:auto;color:var(--gold-soft);font-size:13px;text-decoration:underline;
+.userlink{color:var(--gold-soft);font-size:13px;text-decoration:underline;
   text-underline-offset:3px;background:none;border:0;cursor:pointer;white-space:nowrap;}
+.homelink{margin-left:auto;}
 
 .band{background:var(--band);border-bottom:1px solid var(--line);padding:13px 22px;
   display:flex;gap:8px;align-items:center;overflow-x:auto;}
@@ -239,11 +287,30 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
 </head>
 <body>
 
+<!-- ===== 대문 ===== -->
+<div class="coverwrap" id="coverView">
+  <div class="coverbar">
+    <span id="coverStatus"></span>
+    <button id="coverLogout" hidden>로그아웃</button>
+  </div>
+  <div class="coverstage">
+    <img class="coverimg" id="coverImg" src="cover.jpg" alt="성산교회 재무관리 시스템">
+    <div class="coverfallback" id="coverFallback" hidden>
+      <b>성산교회 재무관리 시스템</b>
+      <span>투명한 재정 · 정확한 관리 · 은혜로운 사역</span>
+    </div>
+  </div>
+  <div class="coveraction">
+    <button class="enter" id="btnEnter">들어가기</button>
+    <span class="hint" id="coverHint"></span>
+  </div>
+</div>
+
 <!-- ===== 로그인 ===== -->
-<div class="authwrap" id="authView">
+<div class="authwrap" id="authView" hidden>
   <div class="authcard">
     <h1>부서 회계</h1>
-    <p class="sub">교회학교 부서 살림의 기록과 흐름을 한 곳에</p>
+    <p class="sub">성산교회 교회학교 · 부서 살림의 기록과 흐름을 한 곳에</p>
 
     <div class="authtabs">
       <button type="button" id="tabLogin" aria-pressed="true">로그인</button>
@@ -300,7 +367,7 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
 <header class="topbar">
   <div class="brand">
     <b>부서 회계</b>
-    <span>교회학교 부서 살림의 기록과 흐름을 한 곳에</span>
+    <span>성산교회 교회학교 · 부서 살림의 기록과 흐름을 한 곳에</span>
   </div>
   <nav class="navpills">
     <button class="pill" data-view="list" aria-current="page">장부</button>
@@ -309,6 +376,7 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
     <button class="pill" data-view="admin" id="pillAdmin" hidden>담당자</button>
     <button class="pill pill-gold" data-view="input">+ 새 기록</button>
   </nav>
+  <button class="homelink" id="btnHome">대문</button>
   <button class="userlink" id="btnLogout">로그아웃</button>
 </header>
 
@@ -495,6 +563,8 @@ const SUPABASE_KEY = 'sb_publishable_j-H0uwFOIx7x8y8zapJfAQ_RK_llEpj';
 const BUCKET = 'acct-receipts';
 /* 예산 집행률 계산에 쓰이는 수입 과목명. 이 과목의 수입만 교회 예산으로 집계됩니다. */
 const SUPPORT_CAT = '교회 지원금';
+/* 보고서·화면에 표기되는 교회 이름 */
+const CHURCH = '성산교회';
 
 /* 같은 도메인의 다른 앱과 Web Locks 충돌이 나면 인증이 멈춥니다.
    잠금과 세션 관리를 모두 라이브러리에 맡기지 않고 직접 처리합니다. */
@@ -940,7 +1010,7 @@ function renderReport(){
     </table>` : `<div style="padding:18px;color:var(--muted);font-size:13px">해당 기간 내역이 없습니다.</div>`;
   const bal = (isY?d.carry:0)+si-so;
   $('#reportArea').innerHTML = `
-    <div class="rhead"><h3>${d.name} ${isY?'연간 결산':'월간 재정'} 보고서</h3><p>${period}</p></div>
+    <div class="rhead"><h3>${d.name} ${isY?'연간 결산':'월간 재정'} 보고서</h3><p>${CHURCH} 교회학교 · ${period}</p></div>
     <div class="rsec"><h4>Ⅰ. 수입 <span>${won(si)}</span></h4>${tbl(gi,si,'in')}</div>
     <div class="rsec"><h4>Ⅱ. 지출 <span>${won(so)}</span></h4>${tbl(go,so,'out')}</div>
     <div class="rsec"><h4>Ⅲ. 잔액 대조</h4>
@@ -1416,7 +1486,46 @@ $('#view-setting').addEventListener('click', async e=>{
   renderSetting(); renderInputCats(); renderCatFilter();
 });
 
+/* ═══════════ 대문 ═══════════ */
+$('#coverImg').addEventListener('error', ()=>{
+  $('#coverImg').hidden = true;
+  $('#coverFallback').hidden = false;
+});
+function showCover(){
+  $('#coverView').hidden = false;
+  $('#authView').hidden = true;
+  $('#appView').hidden = true;
+  const name = (SESSION?.user?.email || '').split('@')[0];
+  $('#coverStatus').textContent = SESSION ? `${name}님 환영합니다` : '';
+  $('#coverLogout').hidden = !SESSION;
+  $('#coverHint').textContent = SESSION ? '' : '이용하려면 로그인이 필요합니다';
+  window.scrollTo(0,0);
+}
+$('#btnEnter').addEventListener('click', ()=>{
+  if(SESSION){ start(); }
+  else{
+    $('#coverView').hidden = true;
+    $('#authView').hidden = false;
+    switchTab('login');
+    $('#aEmail').focus();
+  }
+});
+$('#coverLogout').addEventListener('click', ()=>{
+  try{ localStorage.removeItem(LSKEY); }catch(e){}
+  SESSION = null;
+  location.reload();
+});
+$('#btnHome').addEventListener('click', showCover);
+
 /* ═══════════ 시작 ═══════════ */
+async function boot(){
+  dbg('대문');
+  let s = loadSession();
+  if(s && s.expires_at && s.expires_at < Date.now() + 60000) s = await refreshSession(s);
+  SESSION = (s && s.access_token) ? s : null;
+  if(!SESSION){ try{ localStorage.removeItem(LSKEY); }catch(e){} }
+  showCover();
+}
 function initControls(){
   $('#fMonth').innerHTML = '<option value="all">기간: 전체</option>' +
     Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}월</option>`).join('');
@@ -1439,6 +1548,7 @@ async function run(){
     dbg('세션없음');
     try{ localStorage.removeItem(LSKEY); }catch(e){}
     SESSION = null;
+    $('#coverView').hidden = true;
     $('#authView').hidden = false; $('#appView').hidden = true;
     return;
   }
@@ -1446,6 +1556,7 @@ async function run(){
   SESSION = s;
   sb = makeClient(s.access_token);
   ST.user = s.user || {};
+  $('#coverView').hidden = true;
   $('#authView').hidden = true;
   $('#appView').hidden = false;
   $('#btnLogout').textContent = (ST.user.email||'').split('@')[0] + ' · 로그아웃';
@@ -1477,7 +1588,7 @@ async function run(){
     $('#bootLoading').innerHTML = '불러오기에 실패했습니다.<br><small>'+esc(e.message)+'</small>';
   }
 }
-start();
+boot();
 </script>
 </body>
 </html>
