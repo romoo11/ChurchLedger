@@ -12,6 +12,7 @@
   --tag-beige:#F0EAD8; --tag-beige-tx:#87754E; --r-card:10px; --r-input:8px;
 }
 *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+[hidden]{display:none !important;}
 body{background:var(--page);color:var(--text);
   font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
   font-size:14px;line-height:1.55;-webkit-text-size-adjust:100%;}
@@ -247,7 +248,7 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
     <button class="linkbtn" id="btnReset">비밀번호를 잊으셨나요?</button>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);
                 font-size:11px;color:var(--muted);line-height:1.6;">
-      <b style="color:var(--gold-text);font-size:12px;">버전 5</b>
+      <b style="color:var(--gold-text);font-size:12px;">버전 6</b>
       <div id="dbg" style="margin-top:4px;white-space:pre-wrap;"></div>
     </div>
   </div>
@@ -1061,7 +1062,13 @@ function initControls(){
   $('#rMonth').hidden = true;
   $('#iDate').value = new Date().toISOString().slice(0,10);
 }
+let _starting = false;
 async function start(){
+  if(_starting) return;
+  _starting = true;
+  try{ await run(); } finally{ _starting = false; }
+}
+async function run(){
   dbg('세션확인');
   let s = SESSION || loadSession();
   if(s && s.expires_at && s.expires_at < Date.now() + 60000){ dbg('토큰갱신'); s = await refreshSession(s); }
