@@ -432,10 +432,28 @@ async function doLogin(){
   if(!email || !password){ authMsg('이메일과 비밀번호를 입력하세요','err'); return; }
   $('#btnLogin').disabled = true;
   authMsg('확인 중…','');
-  const { error } = await sb.auth.signInWithPassword({ email, password });
+
+  const timeout = new Promise((_,rej)=> setTimeout(()=>rej(new Error('TIMEOUT')), 12000));
+  let res;
+  try{
+    res = await Promise.race([ sb.auth.signInWithPassword({ email, password }), timeout ]);
+  }catch(e){
+    $('#btnLogin').disabled = false;
+    console.error('로그인 실패:', e);
+    authMsg(e.message==='TIMEOUT'
+      ? '서버에 연결하지 못했습니다. 인터넷 연결 또는 주소 설정을 확인하세요'
+      : '연결 오류: '+e.message, 'err');
+    return;
+  }
   $('#btnLogin').disabled = false;
-  if(error){
-    authMsg(error.message.includes('Invalid') ? '이메일 또는 비밀번호가 맞지 않습니다' : error.message, 'err');
+  if(res.error){
+    console.error('로그인 실패:', res.error);
+    const m = res.error.message||'';
+    authMsg(
+      m.includes('Invalid')       ? '이메일 또는 비밀번호가 맞지 않습니다' :
+      m.includes('not confirmed') ? '이메일 인증이 완료되지 않은 계정입니다' :
+      m.includes('Failed to fetch')? '서버에 연결하지 못했습니다. 네트워크를 확인하세요' :
+      m, 'err');
     return;
   }
   start();
@@ -983,6 +1001,13 @@ function initControls(){
   $('#iDate').value = new Date().toISOString().slice(0,10);
 }
 async function start(){
+  try{
+    const ping = await fetch(SUPABASE_URL + '/auth/v1/health', { headers:{ apikey: SUPABASE_KEY } });
+    if(!ping.ok) console.warn('서버 응답 코드:', ping.status);
+  }catch(e){
+    console.error('서버 연결 불가:', e);
+    authMsg('서버에 연결할 수 없습니다. 이 페이지를 GitHub Pages 주소에서 열었는지 확인하세요','err');
+  }
   const { data:{ session } } = await sb.auth.getSession();
   if(!session){ $('#authView').hidden = false; $('#appView').hidden = true; return; }
   ST.user = session.user;
