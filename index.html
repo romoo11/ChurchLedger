@@ -245,6 +245,11 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
     <button class="btn btn-gold btn-full" id="btnLogin">로그인</button>
     <div class="authmsg" id="authMsg"></div>
     <button class="linkbtn" id="btnReset">비밀번호를 잊으셨나요?</button>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);
+                font-size:11px;color:var(--muted);line-height:1.6;">
+      <b style="color:var(--gold-text);font-size:12px;">버전 5</b>
+      <div id="dbg" style="margin-top:4px;white-space:pre-wrap;"></div>
+    </div>
   </div>
 </div>
 
@@ -504,6 +509,14 @@ function authMsg(m, cls){
   el.textContent = m;
   el.className = 'authmsg ' + (cls||'');
 }
+const _steps = [];
+function dbg(m){
+  _steps.push(m);
+  const el = $('#dbg');
+  if(el) el.textContent = _steps.join(' → ');
+  console.log('[단계]', m);
+}
+dbg('시작');
 $('#btnLogin').addEventListener('click', doLogin);
 $('#aPw').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 $('#aEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#aPw').focus(); });
@@ -1049,14 +1062,17 @@ function initControls(){
   $('#iDate').value = new Date().toISOString().slice(0,10);
 }
 async function start(){
+  dbg('세션확인');
   let s = SESSION || loadSession();
-  if(s && s.expires_at && s.expires_at < Date.now() + 60000) s = await refreshSession(s);
+  if(s && s.expires_at && s.expires_at < Date.now() + 60000){ dbg('토큰갱신'); s = await refreshSession(s); }
   if(!s || !s.access_token){
+    dbg('세션없음');
     try{ localStorage.removeItem(LSKEY); }catch(e){}
     SESSION = null;
     $('#authView').hidden = false; $('#appView').hidden = true;
     return;
   }
+  dbg('클라이언트생성');
   SESSION = s;
   sb = makeClient(s.access_token);
   ST.user = s.user || {};
@@ -1065,7 +1081,12 @@ async function start(){
   $('#btnLogout').textContent = (ST.user.email||'').split('@')[0] + ' · 로그아웃';
   initControls();
   try{
-    await loadAll();
+    dbg('데이터요청');
+    await Promise.race([
+      loadAll(),
+      new Promise((_,rej)=> setTimeout(()=>rej(new Error('데이터 요청 응답 없음 (15초 초과)')), 15000))
+    ]);
+    dbg('데이터도착');
     if(!ST.order.length){
       $('#bootLoading').innerHTML =
         '<strong>배정된 부서가 없습니다</strong><br>재정부장에게 부서 권한 배정을 요청하세요.';
@@ -1076,7 +1097,10 @@ async function start(){
     setKind('out');
     renderAll();
     show('list');
+    dbg('완료');
   }catch(e){
+    dbg('오류');
+    console.error(e);
     $('#bootLoading').innerHTML = '불러오기에 실패했습니다.<br><small>'+esc(e.message)+'</small>';
   }
 }
