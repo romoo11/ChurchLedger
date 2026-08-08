@@ -493,6 +493,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = 'https://phrouczwgefjshqtrzom.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_j-H0uwFOIx7x8y8zapJfAQ_RK_llEpj';
 const BUCKET = 'acct-receipts';
+/* 예산 집행률 계산에 쓰이는 수입 과목명. 이 과목의 수입만 교회 예산으로 집계됩니다. */
+const SUPPORT_CAT = '교회 지원금';
 
 /* 같은 도메인의 다른 앱과 Web Locks 충돌이 나면 인증이 멈춥니다.
    잠금과 세션 관리를 모두 라이브러리에 맡기지 않고 직접 처리합니다. */
@@ -813,14 +815,21 @@ function renderSummary(){
   $('#sBal').style.color = t.bal<0 ? 'var(--expense)' : 'var(--text)';
   $('#pTag').textContent = cur.month==='all' ? `${YEAR}년 누계` : `${cur.month}월 선택됨`;
 
-  const y = totals(cur.dept);
-  const pct = d.budget>0 ? Math.round(y.exp/d.budget*100) : 0;
+  /* 예산 집행률 = 교회에서 실제로 받은 지원금 ÷ 배정예산
+     회비·후원금 등 자체 재원은 교회 예산과 무관하므로 제외합니다. */
+  const got = txOf(cur.dept)
+    .filter(t=> t.kind==='in' && t.cat === SUPPORT_CAT)
+    .reduce((s,t)=>s+t.amount, 0);
+  const left = d.budget - got;
+  const pct = d.budget>0 ? Math.round(got/d.budget*100) : 0;
   const f = $('#bFill');
   f.style.width = Math.min(pct,100)+'%';
   f.classList.toggle('over', pct>100);
   $('#bPct').textContent = pct+'%';
   $('#bPct').style.color = pct>100 ? 'var(--expense)' : 'var(--text)';
-  $('#bText').textContent = `연간 ${won(y.exp)} / ${won(d.budget)} · 잔여 ${won(d.budget-y.exp)}`;
+  $('#bText').innerHTML =
+    `지원금 수령 ${won(got)} / 예산 ${won(d.budget)} · 남은 예산 ` +
+    `<b style="color:${left<0?'var(--expense)':'var(--text)'}">${won(left)}</b>`;
 }
 function renderMonthly(){
   const rows = monthlyRows(cur.dept);
@@ -918,30 +927,38 @@ function renderReport(){
   };
   const gi = grp('in'), go = grp('out');
   const si = gi.reduce((s,[,v])=>s+v,0), so = go.reduce((s,[,v])=>s+v,0);
+  const got = txOf(cur.dept).filter(t=> t.kind==='in' && t.cat===SUPPORT_CAT)
+                            .reduce((s,t)=>s+t.amount,0);
   const period = isY ? `${YEAR}. 1. 1. ~ ${YEAR}. 12. 31.` : `${YEAR}년 ${cur.rmonth}월`;
-  const tbl = (rows,sum,k,bud)=> rows.length ? `
+  const tbl = (rows,sum,k)=> rows.length ? `
     <table class="rt"><thead><tr><th>과목</th><th class="r" style="width:110px">금액</th>
-      <th class="r" style="width:70px">구성비</th>${bud?'<th class="r" style="width:100px">예산 대비</th>':''}</tr></thead>
+      <th class="r" style="width:70px">구성비</th></tr></thead>
     <tbody>${rows.map(([c,v])=>`<tr><td>${c}</td>
       <td class="r num ${k==='in'?'cin':'cout'}">${v.toLocaleString('ko-KR')}</td>
-      <td class="r num">${sum?Math.round(v/sum*100):0}%</td>
-      ${bud?`<td class="r num" style="color:var(--muted)">${d.budget?Math.round(v/d.budget*100):0}%</td>`:''}</tr>`).join('')}</tbody>
-    <tfoot><tr><td>합계</td><td class="r num">${sum.toLocaleString('ko-KR')}</td><td class="r">100%</td>${bud?'<td></td>':''}</tr></tfoot>
+      <td class="r num">${sum?Math.round(v/sum*100):0}%</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>합계</td><td class="r num">${sum.toLocaleString('ko-KR')}</td><td class="r">100%</td></tr></tfoot>
     </table>` : `<div style="padding:18px;color:var(--muted);font-size:13px">해당 기간 내역이 없습니다.</div>`;
   const bal = (isY?d.carry:0)+si-so;
   $('#reportArea').innerHTML = `
     <div class="rhead"><h3>${d.name} ${isY?'연간 결산':'월간 재정'} 보고서</h3><p>${period}</p></div>
-    <div class="rsec"><h4>Ⅰ. 수입 <span>${won(si)}</span></h4>${tbl(gi,si,'in',false)}</div>
-    <div class="rsec"><h4>Ⅱ. 지출 <span>${won(so)}</span></h4>${tbl(go,so,'out',true)}</div>
+    <div class="rsec"><h4>Ⅰ. 수입 <span>${won(si)}</span></h4>${tbl(gi,si,'in')}</div>
+    <div class="rsec"><h4>Ⅱ. 지출 <span>${won(so)}</span></h4>${tbl(go,so,'out')}</div>
     <div class="rsec"><h4>Ⅲ. 잔액 대조</h4>
       <table class="rt"><tbody>
         ${isY?`<tr><td>전기 이월금</td><td class="r num">${d.carry.toLocaleString('ko-KR')}</td></tr>`:''}
         <tr><td>당기 수입</td><td class="r num cin">${si.toLocaleString('ko-KR')}</td></tr>
         <tr><td>당기 지출</td><td class="r num cout">${so.toLocaleString('ko-KR')}</td></tr>
-        ${isY?`<tr><td>배정 예산</td><td class="r num" style="color:var(--muted)">${d.budget.toLocaleString('ko-KR')}</td></tr>`:''}
       </tbody><tfoot><tr><td>${isY?'차기 이월금':'기간 증감'}</td>
         <td class="r num" style="font-size:15px">${bal.toLocaleString('ko-KR')}</td></tr></tfoot></table></div>
-    ${isY?`<div class="rsec"><h4>Ⅳ. 월별 추이</h4>
+    ${isY?`<div class="rsec"><h4>Ⅳ. 교회 예산 집행</h4>
+      <table class="rt"><tbody>
+        <tr><td>배정 예산</td><td class="r num">${d.budget.toLocaleString('ko-KR')}</td></tr>
+        <tr><td>교회 지원금 수령액</td><td class="r num cin">${got.toLocaleString('ko-KR')}</td></tr>
+      </tbody><tfoot><tr><td>남은 예산 <span style="font-weight:400;color:var(--muted)">(집행률 ${d.budget?Math.round(got/d.budget*100):0}%)</span></td>
+        <td class="r num" style="font-size:15px;${d.budget-got<0?'color:var(--expense)':''}">${(d.budget-got).toLocaleString('ko-KR')}</td></tr></tfoot></table>
+      <div style="margin-top:8px;font-size:11.5px;color:var(--muted)">
+        회비·후원금 등 자체 재원은 교회 예산과 별도이므로 집행률에 포함하지 않습니다.</div></div>`:''}
+    ${isY?`<div class="rsec"><h4>Ⅴ. 월별 추이</h4>
       <table class="rt"><thead><tr><th>월</th><th class="r">이월</th><th class="r">수입</th><th class="r">지출</th><th class="r">월말 잔액</th></tr></thead>
       <tbody>${monthlyRows(cur.dept).filter(r=>r.n>0).map(r=>`<tr><td>${r.m}월</td>
         <td class="r num" style="color:var(--muted)">${r.open.toLocaleString('ko-KR')}</td>
@@ -949,17 +966,21 @@ function renderReport(){
         <td class="r num cout">${r.exp?r.exp.toLocaleString('ko-KR'):'—'}</td>
         <td class="r num" style="font-weight:600">${r.close.toLocaleString('ko-KR')}</td></tr>`).join('')}
       </tbody></table></div>`:''}
-    ${isAll()?`<div class="rsec"><h4>Ⅴ. 부서별 요약</h4>
+    ${isAll()?`<div class="rsec"><h4>Ⅵ. 부서별 요약</h4>
       <table class="rt"><thead><tr><th>부서</th><th class="r">이월</th><th class="r">수입</th>
-        <th class="r">지출</th><th class="r">잔액</th><th class="r">집행률</th></tr></thead>
+        <th class="r">지출</th><th class="r">잔액</th>
+        <th class="r">지원금 수령</th><th class="r">집행률</th></tr></thead>
       <tbody>${ST.order.map(k=>{
         const dd = ST.depts[k], tt = totals(k);
-        const p = dd.budget?Math.round(tt.exp/dd.budget*100):0;
+        const gk = txOf(k).filter(t=> t.kind==='in' && t.cat===SUPPORT_CAT)
+                          .reduce((s2,t)=>s2+t.amount,0);
+        const p = dd.budget?Math.round(gk/dd.budget*100):0;
         return `<tr><td>${dd.name}</td>
           <td class="r num" style="color:var(--muted)">${tt.carry.toLocaleString('ko-KR')}</td>
           <td class="r num cin">${tt.inc.toLocaleString('ko-KR')}</td>
           <td class="r num cout">${tt.exp.toLocaleString('ko-KR')}</td>
           <td class="r num" style="font-weight:600;${tt.bal<0?'color:var(--expense)':''}">${tt.bal.toLocaleString('ko-KR')}</td>
+          <td class="r num cin">${gk.toLocaleString('ko-KR')}</td>
           <td class="r num" style="${p>100?'color:var(--expense);font-weight:600':''}">${p}%</td></tr>`;
       }).join('')}</tbody></table></div>`:''}
     <div class="sign">${isAll()
