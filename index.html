@@ -405,12 +405,38 @@ const SUPABASE_KEY = 'sb_publishable_j-H0uwFOIx7x8y8zapJfAQ_RK_llEpj';
 const BUCKET = 'acct-receipts';
 
 /* 같은 도메인의 다른 앱과 Web Locks 충돌이 나면 인증이 멈춥니다.
-   잠금을 쓰지 않도록 대체 함수를 넣습니다. */
+   잠금과 세션 관리를 모두 라이브러리에 맡기지 않고 직접 처리합니다. */
 const noLock = async (_name, _timeout, fn) => await fn();
+const LSKEY = 'acct_session_v1';
+let SESSION = null;
+let sb = null;
 
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { lock: noLock, persistSession: true, autoRefreshToken: true }
-});
+function makeClient(token){
+  return createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, lock:noLock },
+    global:{ headers: token ? { Authorization:`Bearer ${token}` } : {} }
+  });
+}
+function saveSession(j){
+  const s = { access_token:j.access_token, refresh_token:j.refresh_token,
+              expires_at: Date.now() + ((j.expires_in||3600)*1000), user:j.user };
+  try{ localStorage.setItem(LSKEY, JSON.stringify(s)); }catch(e){}
+  return s;
+}
+function loadSession(){
+  try{ return JSON.parse(localStorage.getItem(LSKEY)||'null'); }catch(e){ return null; }
+}
+async function refreshSession(s){
+  try{
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', apikey:SUPABASE_KEY },
+      body: JSON.stringify({ refresh_token: s.refresh_token })
+    });
+    if(!r.ok) return null;
+    return saveSession(await r.json());
+  }catch(e){ return null; }
+}
 const YEAR = new Date().getFullYear();
 const ALL = 'all';
 
@@ -463,11 +489,7 @@ async function doLogin(){
     }
 
     authMsg('로그인 성공. 장부를 여는 중…','ok');
-    await Promise.race([
-      sb.auth.setSession({ access_token: j.access_token, refresh_token: j.refresh_token }),
-      new Promise(res=> setTimeout(res, 3000))
-    ]);
-    SESSION = { access_token: j.access_token, refresh_token: j.refresh_token, user: j.user };
+    SESSION = saveSession(j);
     start();
   }catch(e){
     console.error('로그인 오류:', e);
@@ -477,7 +499,6 @@ async function doLogin(){
     $('#btnLogin').disabled = false;
   }
 }
-let SESSION = null;
 function authMsg(m, cls){
   const el = $('#authMsg');
   el.textContent = m;
@@ -489,11 +510,18 @@ $('#aEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#aPw').focu
 $('#btnReset').addEventListener('click', async ()=>{
   const email = $('#aEmail').value.trim();
   if(!email){ authMsg('이메일을 먼저 입력하세요','err'); return; }
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
-  authMsg(error ? error.message : '재설정 메일을 보냈습니다. 받은편지함을 확인하세요', error?'err':'ok');
+  try{
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', apikey:SUPABASE_KEY },
+      body: JSON.stringify({ email })
+    });
+    authMsg(r.ok ? '재설정 메일을 보냈습니다. 받은편지함을 확인하세요' : '요청에 실패했습니다', r.ok?'ok':'err');
+  }catch(e){ authMsg('연결 오류: '+e.message,'err'); }
 });
-$('#btnLogout').addEventListener('click', async ()=>{
-  await sb.auth.signOut();
+$('#btnLogout').addEventListener('click', ()=>{
+  try{ localStorage.removeItem(LSKEY); }catch(e){}
+  SESSION = null;
   location.reload();
 });
 
@@ -1021,16 +1049,17 @@ function initControls(){
   $('#iDate').value = new Date().toISOString().slice(0,10);
 }
 async function start(){
-  let session = SESSION;
-  if(!session){
-    const got = await Promise.race([
-      sb.auth.getSession().then(r=>r.data.session).catch(()=>null),
-      new Promise(res=> setTimeout(()=>res(null), 4000))
-    ]);
-    session = got;
+  let s = SESSION || loadSession();
+  if(s && s.expires_at && s.expires_at < Date.now() + 60000) s = await refreshSession(s);
+  if(!s || !s.access_token){
+    try{ localStorage.removeItem(LSKEY); }catch(e){}
+    SESSION = null;
+    $('#authView').hidden = false; $('#appView').hidden = true;
+    return;
   }
-  if(!session){ $('#authView').hidden = false; $('#appView').hidden = true; return; }
-  ST.user = session.user;
+  SESSION = s;
+  sb = makeClient(s.access_token);
+  ST.user = s.user || {};
   $('#authView').hidden = true;
   $('#appView').hidden = false;
   $('#btnLogout').textContent = (ST.user.email||'').split('@')[0] + ' · 로그아웃';
