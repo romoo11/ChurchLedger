@@ -24,6 +24,12 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .authcard{width:100%;max-width:360px;background:var(--card);border-radius:14px;padding:32px 28px;}
 .authcard h1{margin:0 0 4px;font-size:22px;letter-spacing:-0.04em;}
 .authcard p.sub{margin:0 0 24px;font-size:12.5px;color:var(--muted);}
+.authtabs{display:flex;gap:8px;margin-bottom:20px;}
+.authtabs button{
+  flex:1;padding:9px 0;border-radius:999px;border:1px solid var(--line-2);
+  background:#fff;cursor:pointer;font-weight:600;color:var(--muted);font-size:13.5px;}
+.authtabs button[aria-pressed="true"]{
+  background:var(--navy);border-color:var(--navy);color:#fff;}
 .authcard .field{margin-bottom:14px;}
 .authmsg{font-size:12.5px;margin-top:12px;min-height:18px;}
 .authmsg.err{color:var(--expense);}
@@ -235,21 +241,53 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
   <div class="authcard">
     <h1>부서 회계</h1>
     <p class="sub">교회학교 부서 살림의 기록과 흐름을 한 곳에</p>
-    <div class="field">
-      <label for="aEmail">이메일</label>
-      <input type="email" id="aEmail" autocomplete="username" placeholder="name@example.com">
+
+    <div class="authtabs">
+      <button type="button" id="tabLogin" aria-pressed="true">로그인</button>
+      <button type="button" id="tabSignup" aria-pressed="false">회원가입</button>
     </div>
-    <div class="field">
-      <label for="aPw">비밀번호</label>
-      <input type="password" id="aPw" autocomplete="current-password">
+
+    <div id="loginForm">
+      <div class="field">
+        <label for="aEmail">이메일</label>
+        <input type="email" id="aEmail" autocomplete="username" placeholder="name@example.com">
+      </div>
+      <div class="field">
+        <label for="aPw">비밀번호</label>
+        <input type="password" id="aPw" autocomplete="current-password">
+      </div>
+      <button class="btn btn-gold btn-full" id="btnLogin">로그인</button>
+      <div class="authmsg" id="authMsg"></div>
+      <button class="linkbtn" id="btnReset">비밀번호를 잊으셨나요?</button>
     </div>
-    <button class="btn btn-gold btn-full" id="btnLogin">로그인</button>
-    <div class="authmsg" id="authMsg"></div>
-    <button class="linkbtn" id="btnReset">비밀번호를 잊으셨나요?</button>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);
-                font-size:11px;color:var(--muted);line-height:1.6;">
-      <b style="color:var(--gold-text);font-size:12px;">버전 6</b>
-      <div id="dbg" style="margin-top:4px;white-space:pre-wrap;"></div>
+
+    <div id="signupForm" hidden>
+      <div class="field">
+        <label for="sName">이름</label>
+        <input type="text" id="sName" placeholder="예) 김총무" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="sDept">소속 부서</label>
+        <select id="sDept"><option value="">불러오는 중…</option></select>
+      </div>
+      <div class="field">
+        <label for="sEmail">이메일</label>
+        <input type="email" id="sEmail" autocomplete="username" placeholder="name@example.com">
+      </div>
+      <div class="field">
+        <label for="sPw">비밀번호 <span style="color:var(--muted)">(6자 이상)</span></label>
+        <input type="password" id="sPw" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="sPw2">비밀번호 확인</label>
+        <input type="password" id="sPw2" autocomplete="new-password">
+      </div>
+      <button class="btn btn-gold btn-full" id="btnSignup">가입 신청</button>
+      <div class="authmsg" id="signMsg"></div>
+      <div class="note" style="margin-top:14px;font-size:11.5px;">
+        가입 후 <b>관리자 승인</b>을 받아야 장부가 열립니다.
+        승인 전에는 로그인해도 아무 내용이 보이지 않습니다.
+      </div>
     </div>
   </div>
 </div>
@@ -265,6 +303,7 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
     <button class="pill" data-view="list" aria-current="page">장부</button>
     <button class="pill" data-view="report">결산 보고</button>
     <button class="pill" data-view="setting">예산·과목</button>
+    <button class="pill" data-view="admin" id="pillAdmin" hidden>담당자</button>
     <button class="pill pill-gold" data-view="input">+ 새 기록</button>
   </nav>
   <button class="userlink" id="btnLogout">로그아웃</button>
@@ -365,6 +404,44 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
       <div class="report" id="reportArea"></div>
     </section>
 
+    <section id="view-admin" hidden>
+      <div class="panel">
+        <h2>승인 대기 <em id="pCount">가입했지만 아직 부서가 배정되지 않은 계정</em></h2>
+        <div class="tablewrap" id="pendingArea"></div>
+      </div>
+      <div class="panel">
+        <h2>담당자 배정 <em>이메일과 범위를 지정해 권한을 줍니다</em></h2>
+        <div class="pbody">
+          <div class="field">
+            <label for="gEmail">계정 이메일</label>
+            <input type="text" id="gEmail" placeholder="name@example.com" autocomplete="off">
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="gScope">범위</label>
+              <select id="gScope"></select>
+            </div>
+            <div class="field">
+              <label for="gRole">권한</label>
+              <select id="gRole">
+                <option value="accountant">편집 — 기록·수정·삭제 가능</option>
+                <option value="viewer">열람 — 보기만 가능</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-gold" id="btnGrant">권한 배정</button>
+          <div class="note" style="margin-top:16px;">
+            <b>담당자는 로그인 화면의 회원가입 탭에서 직접 가입합니다.</b>
+            가입하면 위 승인 대기 목록에 뜨고, 배정 버튼을 누르면 이 칸이 자동으로 채워집니다.
+            같은 사람에게 여러 부서를 줄 수 있고, 이미 있는 권한은 새 값으로 덮어씁니다.
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>현재 권한 <em id="mCount"></em></h2>
+        <div class="tablewrap" id="memberArea"></div>
+      </div>
+    </section>
     <section id="view-setting" hidden>
       <div class="panel">
         <h2>예산·과목 <em id="setRole"></em></h2>
@@ -513,8 +590,6 @@ function authMsg(m, cls){
 const _steps = [];
 function dbg(m){
   _steps.push(m);
-  const el = $('#dbg');
-  if(el) el.textContent = _steps.join(' → ');
   console.log('[단계]', m);
 }
 dbg('시작');
@@ -539,10 +614,84 @@ $('#btnLogout').addEventListener('click', ()=>{
   location.reload();
 });
 
+/* ═══════════ 회원가입 ═══════════ */
+function signMsg(m, cls){
+  const el = $('#signMsg');
+  el.textContent = m;
+  el.className = 'authmsg ' + (cls||'');
+}
+function switchTab(which){
+  const isLogin = which === 'login';
+  $('#tabLogin').setAttribute('aria-pressed', String(isLogin));
+  $('#tabSignup').setAttribute('aria-pressed', String(!isLogin));
+  $('#loginForm').hidden = !isLogin;
+  $('#signupForm').hidden = isLogin;
+  if(!isLogin) loadDeptOptions();
+}
+$('#tabLogin').addEventListener('click', ()=> switchTab('login'));
+$('#tabSignup').addEventListener('click', ()=> switchTab('signup'));
+
+let _deptsLoaded = false;
+async function loadDeptOptions(){
+  if(_deptsLoaded) return;
+  try{
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/acct_departments?select=name&active=eq.true&order=sort_order`,
+      { headers:{ apikey: SUPABASE_KEY } });
+    const list = await r.json();
+    if(!Array.isArray(list)) throw new Error('부서 목록을 불러오지 못했습니다');
+    $('#sDept').innerHTML = '<option value="">부서를 선택하세요</option>' +
+      list.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('');
+    _deptsLoaded = true;
+  }catch(e){
+    $('#sDept').innerHTML = '<option value="">목록을 불러오지 못했습니다</option>';
+  }
+}
+
+async function doSignup(){
+  const name  = $('#sName').value.trim();
+  const wish  = $('#sDept').value;
+  const email = $('#sEmail').value.trim();
+  const pw    = $('#sPw').value, pw2 = $('#sPw2').value;
+
+  if(!name){ signMsg('이름을 입력하세요','err'); $('#sName').focus(); return; }
+  if(!wish){ signMsg('소속 부서를 선택하세요','err'); return; }
+  if(!email){ signMsg('이메일을 입력하세요','err'); return; }
+  if(pw.length < 6){ signMsg('비밀번호는 6자 이상이어야 합니다','err'); return; }
+  if(pw !== pw2){ signMsg('비밀번호가 서로 다릅니다','err'); $('#sPw2').focus(); return; }
+
+  const btn = $('#btnSignup');
+  btn.disabled = true; btn.textContent = '신청 중…';
+  try{
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', apikey: SUPABASE_KEY },
+      body: JSON.stringify({ email, password: pw, data:{ name, dept_wish: wish } })
+    });
+    const j = await r.json();
+    if(!r.ok){
+      const m = j.msg || j.error_description || j.message || '가입에 실패했습니다';
+      signMsg(/already registered|already been/i.test(m)
+        ? '이미 가입된 이메일입니다. 로그인 탭을 이용하세요' : m, 'err');
+      return;
+    }
+    signMsg('가입 신청이 접수되었습니다. 관리자 승인 후 이용하실 수 있습니다','ok');
+    $('#sPw').value = ''; $('#sPw2').value = '';
+    $('#aEmail').value = email;
+    setTimeout(()=>{ switchTab('login'); authMsg('가입이 완료되었습니다. 로그인해 보세요','ok'); }, 2200);
+  }catch(e){
+    signMsg('연결 오류: '+e.message, 'err');
+  }finally{
+    btn.disabled = false; btn.textContent = '가입 신청';
+  }
+}
+$('#btnSignup').addEventListener('click', doSignup);
+$('#sPw2').addEventListener('keydown', e=>{ if(e.key==='Enter') doSignup(); });
+
 /* ═══════════ 데이터 적재 ═══════════ */
 async function loadAll(){
   const [admins, myDepts, depts, periods, cats, txs] = await Promise.all([
-    sb.from('acct_admins').select('user_id').eq('user_id', ST.user.id),
+    sb.from('acct_admins').select('user_id, can_edit').eq('user_id', ST.user.id),
     sb.from('acct_dept_users').select('dept_id, role').eq('user_id', ST.user.id),
     sb.from('acct_departments').select('id, name, sort_order').eq('active', true).order('sort_order'),
     sb.from('acct_periods').select('dept_id, budget, carry_over, closed').eq('year', YEAR),
@@ -556,6 +705,7 @@ async function loadAll(){
   if(err) throw err.error;
 
   ST.isAdmin = admins.data.length > 0;
+  ST.canEditAll = ST.isAdmin && admins.data[0].can_edit === true;
   const roleMap = {};
   myDepts.data.forEach(r=> roleMap[r.dept_id] = r.role);
   const perMap = {};
@@ -569,7 +719,7 @@ async function loadAll(){
     ST.depts[d.id] = {
       id:d.id, name:d.name,
       budget:p.budget, carry:p.carry_over, closed:p.closed,
-      canWrite: roleMap[d.id] === 'accountant',
+      canWrite: roleMap[d.id] === 'accountant' || ST.canEditAll,
       cats:{ in:[], out:[] }
     };
     ST.order.push(d.id);
@@ -810,10 +960,11 @@ function renderReport(){
 }
 function renderSetting(){
   const d = dept();
-  $('#setRole').textContent = ST.isAdmin ? '전체 관리자' : (d.canWrite ? '부서 회계' : '열람 전용');
+  $('#setRole').textContent = ST.canEditAll ? '전체 편집 권한'
+    : (ST.isAdmin ? '전체 열람 권한' : (d.canWrite ? '부서 회계' : '열람 전용'));
   $('#setBudget').value = d.budget.toLocaleString('ko-KR');
   $('#setCarry').value  = d.carry.toLocaleString('ko-KR');
-  const editable = ST.isAdmin;
+  const editable = ST.isAdmin && ST.canEditAll;
   $('#setBudget').disabled = !editable;
   $('#setCarry').disabled  = !editable;
   $('#btnSetSave').disabled = !editable;
@@ -823,6 +974,113 @@ function renderSetting(){
   ['#newIn','#newOut','#addIn','#addOut'].forEach(s=> $(s).disabled = !d.canWrite);
 }
 
+async function renderPending(){
+  const { data, error } = await sb.rpc('acct_pending_users');
+  if(error){
+    $('#pendingArea').innerHTML =
+      `<div style="padding:20px;color:var(--expense);font-size:13px">${esc(error.message)}</div>`;
+    return;
+  }
+  $('#pCount').textContent = data.length
+    ? `${data.length}명이 승인을 기다리고 있습니다`
+    : '가입했지만 아직 부서가 배정되지 않은 계정';
+  if(!data.length){
+    $('#pendingArea').innerHTML =
+      '<div style="padding:20px;color:var(--muted);font-size:13px">승인을 기다리는 계정이 없습니다.</div>';
+    return;
+  }
+  $('#pendingArea').innerHTML = `
+  <table class="mtable">
+    <thead><tr>
+      <th>이름</th><th style="text-align:left">희망 부서</th>
+      <th style="text-align:left">계정</th><th style="width:80px"></th>
+    </tr></thead>
+    <tbody>${data.map(r=>`
+      <tr style="cursor:default">
+        <td>${esc(r.name)||'<span class="zero">—</span>'}</td>
+        <td style="text-align:left">${r.dept_wish
+          ? `<span class="tag beige">${esc(r.dept_wish)}</span>` : '<span class="zero">—</span>'}</td>
+        <td style="text-align:left;color:var(--muted)">${esc(r.email)}</td>
+        <td><button class="btn btn-sm btn-gold" data-approve="${esc(r.email)}"
+              data-wish="${esc(r.dept_wish)}">배정</button></td>
+      </tr>`).join('')}</tbody>
+  </table>`;
+}
+$('#pendingArea').addEventListener('click', e=>{
+  const b = e.target.closest('[data-approve]'); if(!b) return;
+  $('#gEmail').value = b.dataset.approve;
+  const wish = b.dataset.wish;
+  const match = ST.order.find(k=> ST.depts[k].name === wish);
+  $('#gScope').value = match || '';
+  $('#gRole').value = 'accountant';
+  $('#gEmail').scrollIntoView({ behavior:'smooth', block:'center' });
+  toast(wish ? `${wish} 편집 권한으로 채웠습니다. 확인 후 배정하세요` : '범위를 선택한 뒤 배정하세요');
+});
+
+/* ═══════════ 담당자 배정 ═══════════ */
+function renderAdminForm(){
+  $('#gScope').innerHTML = '<option value="">전체 (모든 부서)</option>' +
+    ST.order.map(k=>`<option value="${k}">${ST.depts[k].name}</option>`).join('');
+}
+async function renderMembers(){
+  $('#memberArea').innerHTML = '<div style="padding:20px;color:var(--muted);font-size:13px">불러오는 중…</div>';
+  const { data, error } = await sb.rpc('acct_members');
+  if(error){
+    $('#memberArea').innerHTML = `<div style="padding:20px;color:var(--expense);font-size:13px">${esc(error.message)}</div>`;
+    return;
+  }
+  $('#mCount').textContent = `${data.length}건`;
+  if(!data.length){
+    $('#memberArea').innerHTML = '<div style="padding:20px;color:var(--muted);font-size:13px">배정된 담당자가 없습니다.</div>';
+    return;
+  }
+  $('#memberArea').innerHTML = `
+  <table class="mtable">
+    <thead><tr>
+      <th>계정</th><th style="text-align:left">범위</th>
+      <th style="text-align:left">권한</th><th style="width:80px"></th>
+    </tr></thead>
+    <tbody>${data.map(r=>`
+      <tr style="cursor:default">
+        <td>${esc(r.email)}</td>
+        <td style="text-align:left">${r.scope==='전체'
+          ? '<span class="tag navy">전체</span>'
+          : `<span class="tag beige">${esc(r.dept_name)}</span>`}</td>
+        <td style="text-align:left">${r.role==='accountant'
+          ? '<span class="tag blue">편집</span>'
+          : '<span class="tag beige">열람</span>'}</td>
+        <td><button class="btn btn-sm" data-revoke="${r.user_id}"
+              data-dept="${r.dept_id||''}" data-label="${esc(r.email)} · ${r.scope==='전체'?'전체':esc(r.dept_name)}"
+              >해제</button></td>
+      </tr>`).join('')}</tbody>
+  </table>`;
+}
+$('#btnGrant').addEventListener('click', async ()=>{
+  const email = $('#gEmail').value.trim();
+  if(!email){ toast('이메일을 입력하세요'); $('#gEmail').focus(); return; }
+  const scope = $('#gScope').value;
+  const btn = $('#btnGrant');
+  btn.disabled = true; btn.textContent = '배정 중…';
+  const { data, error } = await sb.rpc('acct_grant', {
+    p_email: email, p_dept: scope || null, p_role: $('#gRole').value
+  });
+  btn.disabled = false; btn.textContent = '권한 배정';
+  if(error){ toast(error.message, true); return; }
+  toast(data);
+  $('#gEmail').value = '';
+  renderPending(); renderMembers();
+});
+$('#memberArea').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-revoke]'); if(!b) return;
+  if(!confirm(`${b.dataset.label}\n\n이 권한을 해제할까요?`)) return;
+  const { data, error } = await sb.rpc('acct_revoke', {
+    p_user: b.dataset.revoke, p_dept: b.dataset.dept || null
+  });
+  if(error){ toast(error.message, true); return; }
+  toast(data);
+  renderPending(); renderMembers();
+});
+
 /* ═══════════ 화면 전환 ═══════════ */
 function show(v){
   if(v==='input'){
@@ -831,8 +1089,9 @@ function show(v){
     if(dept().closed){ toast(`${YEAR}년도가 마감되어 기록할 수 없습니다`); return; }
   }
   if(v==='setting' && isAll()){ toast('부서를 먼저 선택하세요'); return; }
+  if(v==='admin' && !ST.isAdmin){ toast('관리자만 볼 수 있습니다'); return; }
   cur.view = v;
-  ['list','input','report','setting'].forEach(x=> $('#view-'+x).hidden = (x!==v));
+  ['list','input','report','setting','admin'].forEach(x=> $('#view-'+x).hidden = (x!==v));
   $$('.navpills .pill').forEach(b=>{
     if(b.dataset.view===v && !b.classList.contains('pill-gold')) b.setAttribute('aria-current','page');
     else b.removeAttribute('aria-current');
@@ -840,6 +1099,7 @@ function show(v){
   if(v==='list'){ renderMonthly(); renderList(); }
   if(v==='report') renderReport();
   if(v==='setting') renderSetting();
+  if(v==='admin'){ renderAdminForm(); renderPending(); renderMembers(); }
   window.scrollTo(0,0);
 }
 function renderAll(){
@@ -1096,11 +1356,14 @@ async function run(){
     dbg('데이터도착');
     if(!ST.order.length){
       $('#bootLoading').innerHTML =
-        '<strong>배정된 부서가 없습니다</strong><br>재정부장에게 부서 권한 배정을 요청하세요.';
+        '<strong>승인을 기다리는 중입니다</strong><br>' +
+        '가입은 완료되었습니다. 관리자가 부서를 배정하면 장부가 열립니다.<br>' +
+        '<small style="color:var(--muted)">계정 ' + esc(ST.user.email||'') + '</small>';
       return;
     }
     $('#bootLoading').hidden = true;
     $('#appBody').hidden = false;
+    $('#pillAdmin').hidden = !ST.isAdmin;
     setKind('out');
     renderAll();
     show('list');
