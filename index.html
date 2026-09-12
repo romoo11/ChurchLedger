@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>부서 회계 · 성산교회</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#151A28">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="부서 회계">
 <style>
 :root{
   --navy:#151A28; --navy-2:#242C42; --gold:#C8A02A; --gold-soft:#D9BC63; --gold-text:#A8842C;
@@ -599,6 +606,34 @@ async function refreshSession(s){
     return saveSession(await r.json());
   }catch(e){ return null; }
 }
+
+/* 접속 증표는 한 시간마다 만료됩니다.
+   만료 1분 전에 미리 갱신해서 사용 중에 끊기지 않도록 합니다. */
+let _refreshTimer = null;
+function scheduleRefresh(){
+  clearTimeout(_refreshTimer);
+  if(!SESSION || !SESSION.expires_at) return;
+  const wait = Math.max(10000, SESSION.expires_at - Date.now() - 60000);
+  _refreshTimer = setTimeout(renewNow, wait);
+}
+async function renewNow(){
+  if(!SESSION) return false;
+  const s = await refreshSession(SESSION);
+  if(!s){
+    toast('로그인이 만료되었습니다. 다시 로그인해 주세요', true);
+    setTimeout(()=>{ try{ localStorage.removeItem(LSKEY); }catch(e){} location.reload(); }, 2500);
+    return false;
+  }
+  SESSION = s;
+  sb = makeClient(s.access_token);
+  scheduleRefresh();
+  return true;
+}
+/* 노트북을 덮어두면 예약된 갱신이 밀립니다. 화면이 다시 켜지면 즉시 확인합니다. */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState !== 'visible' || !SESSION) return;
+  if(SESSION.expires_at && SESSION.expires_at < Date.now() + 120000) renewNow();
+});
 const YEAR = new Date().getFullYear();
 const ALL = 'all';
 
@@ -1073,8 +1108,11 @@ function renderSetting(){
   ['#newIn','#newOut','#addIn','#addOut'].forEach(s=> $(s).disabled = !d.canWrite);
 }
 
-async function renderPending(){
-  const { data, error } = await sb.rpc('acct_pending_users');
+async function renderPending(retry){
+  let { data, error } = await sb.rpc('acct_pending_users');
+  if(error && /JWT expired|jwt expired/i.test(error.message) && !retry){
+    if(await renewNow()) return renderPending(true);
+  }
   if(error){
     $('#pendingArea').innerHTML =
       `<div style="padding:20px;color:var(--expense);font-size:13px">${esc(error.message)}</div>`;
@@ -1121,9 +1159,12 @@ function renderAdminForm(){
   $('#gScope').innerHTML = '<option value="">전체 (모든 부서)</option>' +
     ST.order.map(k=>`<option value="${k}">${ST.depts[k].name}</option>`).join('');
 }
-async function renderMembers(){
+async function renderMembers(retry){
   $('#memberArea').innerHTML = '<div style="padding:20px;color:var(--muted);font-size:13px">불러오는 중…</div>';
-  const { data, error } = await sb.rpc('acct_members');
+  let { data, error } = await sb.rpc('acct_members');
+  if(error && /JWT expired|jwt expired/i.test(error.message) && !retry){
+    if(await renewNow()) return renderMembers(true);
+  }
   if(error){
     $('#memberArea').innerHTML = `<div style="padding:20px;color:var(--expense);font-size:13px">${esc(error.message)}</div>`;
     return;
@@ -1238,7 +1279,12 @@ $('#fRcpt').addEventListener('change', e=>{ cur.rcpt=e.target.value; renderList(
 $('#lnkReload').addEventListener('click', async ()=>{
   toast('불러오는 중…');
   try{ await loadAll(); renderAll(); toast('최신 상태입니다'); }
-  catch(e){ toast('불러오기 실패: '+e.message, true); }
+  catch(e){
+    if(/JWT expired|jwt expired/i.test(e.message||'') && await renewNow()){
+      try{ await loadAll(); renderAll(); toast('최신 상태입니다'); return; }catch(e2){}
+    }
+    toast('불러오기 실패: '+e.message, true);
+  }
 });
 
 /* 영수증 보기 · 거래 삭제 */
@@ -1555,6 +1601,7 @@ async function run(){
   dbg('클라이언트생성');
   SESSION = s;
   sb = makeClient(s.access_token);
+  scheduleRefresh();
   ST.user = s.user || {};
   $('#coverView').hidden = true;
   $('#authView').hidden = true;
