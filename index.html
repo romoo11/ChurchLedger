@@ -303,7 +303,7 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
   <div class="coverstage">
     <img class="coverimg" id="coverImg" src="cover.jpg" alt="성산교회 재무관리 시스템">
     <div class="coverfallback" id="coverFallback" hidden>
-      <b>성산교회 재무관리 시스템</b>
+      <b id="coverFallbackName">성산교회 재무관리 시스템</b>
       <span>투명한 재정 · 정확한 관리 · 은혜로운 사역</span>
     </div>
   </div>
@@ -316,8 +316,8 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
 <!-- ===== 로그인 ===== -->
 <div class="authwrap" id="authView" hidden>
   <div class="authcard">
-    <h1>부서 회계</h1>
-    <p class="sub">성산교회 교회학교 · 부서 살림의 기록과 흐름을 한 곳에</p>
+    <h1 id="authTitle">부서 회계</h1>
+    <p class="sub" id="authSub">성산교회 교회학교 · 부서 살림의 기록과 흐름을 한 곳에</p>
 
     <div class="authtabs">
       <button type="button" id="tabLogin" aria-pressed="true">로그인</button>
@@ -373,8 +373,8 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
 <div id="appView" hidden>
 <header class="topbar">
   <div class="brand">
-    <b>부서 회계</b>
-    <span>성산교회 교회학교 · 부서 살림의 기록과 흐름을 한 곳에</span>
+    <b id="brandName">부서 회계</b>
+    <span id="brandSub">성산교회 교회학교 · 부서 살림의 기록과 흐름을 한 곳에</span>
   </div>
   <nav class="navpills">
     <button class="pill" data-view="list" aria-current="page">장부</button>
@@ -488,6 +488,29 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
 
     <section id="view-admin" hidden>
       <div class="panel">
+        <h2>프로그램 이름 <em>화면과 결산 보고서에 표시됩니다</em></h2>
+        <div class="pbody">
+          <div class="two">
+            <div class="field"><label for="nApp">프로그램 이름</label>
+              <input type="text" id="nApp" placeholder="부서 회계" autocomplete="off"></div>
+            <div class="field"><label for="nChurch">교회 이름</label>
+              <input type="text" id="nChurch" placeholder="성산교회" autocomplete="off"></div>
+          </div>
+          <div class="two">
+            <div class="field"><label for="nGroup">조직 이름</label>
+              <input type="text" id="nGroup" placeholder="교회학교" autocomplete="off"></div>
+            <div class="field"><label for="nSub">부제</label>
+              <input type="text" id="nSub" placeholder="부서 살림의 기록과 흐름을 한 곳에" autocomplete="off"></div>
+          </div>
+          <button class="btn btn-gold" id="btnNameSave">이름 저장</button>
+          <div class="note" style="margin-top:14px;">
+            조직 이름은 전체 탭의 이름(<b>○○ 전체</b>)과 결산 보고서의 서명란에 쓰입니다.
+            홈 화면 아이콘 아래 이름은 폰에 저장된 값이라 여기서 바꿔도 반영되지 않습니다.
+            <span id="nameNote" style="display:block;margin-top:6px;color:var(--expense);"></span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
         <h2>승인 대기 <em id="pCount">가입했지만 아직 부서가 배정되지 않은 계정</em></h2>
         <div class="tablewrap" id="pendingArea"></div>
       </div>
@@ -570,8 +593,13 @@ const SUPABASE_KEY = 'sb_publishable_j-H0uwFOIx7x8y8zapJfAQ_RK_llEpj';
 const BUCKET = 'acct-receipts';
 /* 예산 집행률 계산에 쓰이는 수입 과목명. 이 과목의 수입만 교회 예산으로 집계됩니다. */
 const SUPPORT_CAT = '교회 지원금';
-/* 보고서·화면에 표기되는 교회 이름 */
-const CHURCH = '성산교회';
+/* 화면·보고서에 표시되는 이름. DB의 acct_settings 에서 불러와 덮어씁니다. */
+let CFG = {
+  app_name:   '부서 회계',
+  church:     '성산교회',
+  subtitle:   '교회학교 부서 살림의 기록과 흐름을 한 곳에',
+  group_name: '교회학교'
+};
 
 /* 같은 도메인의 다른 앱과 Web Locks 충돌이 나면 인증이 멈춥니다.
    잠금과 세션 관리를 모두 라이브러리에 맡기지 않고 직접 처리합니다. */
@@ -862,7 +890,7 @@ function deptOf(id){
     list.forEach(d=> d.cats[k].forEach(c=>{ if(!seen.has(c.name)){ seen.add(c.name); out.push(c); } }));
     return out;
   };
-  return { id:ALL, name:'교회학교 전체', canWrite:false, closed:false,
+  return { id:ALL, name:CFG.group_name+' 전체', canWrite:false, closed:false,
     budget:list.reduce((s,d)=>s+d.budget,0),
     carry:list.reduce((s,d)=>s+d.carry,0),
     cats:{ in:merge('in'), out:merge('out') } };
@@ -1045,7 +1073,7 @@ function renderReport(){
     </table>` : `<div style="padding:18px;color:var(--muted);font-size:13px">해당 기간 내역이 없습니다.</div>`;
   const bal = (isY?d.carry:0)+si-so;
   $('#reportArea').innerHTML = `
-    <div class="rhead"><h3>${d.name} ${isY?'연간 결산':'월간 재정'} 보고서</h3><p>${CHURCH} 교회학교 · ${period}</p></div>
+    <div class="rhead"><h3>${d.name} ${isY?'연간 결산':'월간 재정'} 보고서</h3><p>${esc(CFG.church)} ${esc(CFG.group_name)} · ${period}</p></div>
     <div class="rsec"><h4>Ⅰ. 수입 <span>${won(si)}</span></h4>${tbl(gi,si,'in')}</div>
     <div class="rsec"><h4>Ⅱ. 지출 <span>${won(so)}</span></h4>${tbl(go,so,'out')}</div>
     <div class="rsec"><h4>Ⅲ. 잔액 대조</h4>
@@ -1089,7 +1117,7 @@ function renderReport(){
           <td class="r num" style="${p>100?'color:var(--expense);font-weight:600':''}">${p}%</td></tr>`;
       }).join('')}</tbody></table></div>`:''}
     <div class="sign">${isAll()
-      ?'<div>교회학교 회계<u></u></div><div>교회학교 부장<u></u></div><div>재정부장<u></u></div>'
+      ?`<div>${esc(CFG.group_name)} 회계<u></u></div><div>${esc(CFG.group_name)} 부장<u></u></div><div>재정부장<u></u></div>`
       :'<div>부서 회계<u></u></div><div>부서장<u></u></div><div>재정부장<u></u></div>'}</div>`;
 }
 function renderSetting(){
@@ -1152,6 +1180,55 @@ $('#pendingArea').addEventListener('click', e=>{
   $('#gRole').value = 'accountant';
   $('#gEmail').scrollIntoView({ behavior:'smooth', block:'center' });
   toast(wish ? `${wish} 편집 권한으로 채웠습니다. 확인 후 배정하세요` : '범위를 선택한 뒤 배정하세요');
+});
+
+/* ═══════════ 표시 설정 ═══════════ */
+async function loadSettings(){
+  try{
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/acct_settings?select=key,value`,
+      { headers:{ apikey: SUPABASE_KEY } });
+    const rows = await r.json();
+    if(Array.isArray(rows)) rows.forEach(x=>{ if(x.value) CFG[x.key] = x.value; });
+  }catch(e){ /* 실패하면 기본값 그대로 씁니다 */ }
+  applyNames();
+}
+function applyNames(){
+  document.title = `${CFG.app_name} · ${CFG.church}`;
+  $('#brandName').textContent = CFG.app_name;
+  $('#brandSub').textContent  = `${CFG.church} ${CFG.group_name} · ${CFG.subtitle}`;
+  $('#authTitle').textContent = CFG.app_name;
+  $('#authSub').textContent   = `${CFG.church} ${CFG.group_name} · ${CFG.subtitle}`;
+  $('#coverFallbackName').textContent = `${CFG.church} 재무관리 시스템`;
+}
+function renderNameForm(){
+  $('#nApp').value    = CFG.app_name;
+  $('#nChurch').value = CFG.church;
+  $('#nGroup').value  = CFG.group_name;
+  $('#nSub').value    = CFG.subtitle;
+  const can = ST.canEditAll;
+  ['#nApp','#nChurch','#nGroup','#nSub','#btnNameSave'].forEach(x=> $(x).disabled = !can);
+  $('#nameNote').textContent = can ? '' : '전체 편집 권한이 있는 관리자만 수정할 수 있습니다.';
+}
+$('#btnNameSave').addEventListener('click', async ()=>{
+  const next = {
+    app_name:   $('#nApp').value.trim()    || '부서 회계',
+    church:     $('#nChurch').value.trim() || '',
+    group_name: $('#nGroup').value.trim()  || '',
+    subtitle:   $('#nSub').value.trim()    || ''
+  };
+  const btn = $('#btnNameSave');
+  btn.disabled = true; btn.textContent = '저장 중…';
+  const { error } = await sb.from('acct_settings').upsert(
+    Object.entries(next).map(([key,value])=>({ key, value, updated_by: ST.user.id })),
+    { onConflict:'key' });
+  btn.disabled = false; btn.textContent = '이름 저장';
+  if(error){ toast('저장 실패: '+error.message, true); return; }
+  CFG = { ...CFG, ...next };
+  applyNames();
+  renderBand();
+  if(cur.view==='report') renderReport();
+  toast('이름을 저장했습니다');
 });
 
 /* ═══════════ 담당자 배정 ═══════════ */
@@ -1244,7 +1321,7 @@ function showRaw(v){
   if(v==='list'){ renderMonthly(); renderList(); }
   if(v==='report') renderReport();
   if(v==='setting') renderSetting();
-  if(v==='admin'){ renderAdminForm(); renderPending(); renderMembers(); }
+  if(v==='admin'){ renderNameForm(); renderAdminForm(); renderPending(); renderMembers(); }
   window.scrollTo(0,0);
 }
 function renderAll(){
@@ -1566,6 +1643,7 @@ $('#btnHome').addEventListener('click', showCover);
 /* ═══════════ 시작 ═══════════ */
 async function boot(){
   dbg('대문');
+  await loadSettings();
   let s = loadSession();
   if(s && s.expires_at && s.expires_at < Date.now() + 60000) s = await refreshSession(s);
   SESSION = (s && s.access_token) ? s : null;
