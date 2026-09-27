@@ -258,6 +258,13 @@ table.rt thead th{background:#F7F7F4;font-size:12px;color:#5C5C56;font-weight:60
 table.rt .r{text-align:right;font-variant-numeric:tabular-nums;}
 table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(--line-2);}
 .cin{color:var(--income);font-weight:600;} .cout{color:var(--expense);font-weight:600;}
+/* 거래 명세서 표 */
+table.rt.detail{font-size:12px;}
+table.rt.detail th,table.rt.detail td{padding:6px 8px;}
+table.rt.detail td.memo{word-break:keep-all;}
+table.rt.detail .ck{text-align:center;color:var(--gold-text);font-weight:700;}
+table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight:600;}
+
 .sign{display:flex;gap:28px;justify-content:flex-end;margin-top:38px;font-size:12px;color:var(--muted);}
 .sign div{text-align:center;}
 .sign u{display:block;width:90px;margin-top:26px;border-bottom:1px solid var(--line-2);text-decoration:none;}
@@ -288,7 +295,15 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
   .topbar,.band,.noprint,.summary,.budget{display:none !important;}
   .wrap{padding:0;max-width:none;}
   .report{border:0;padding:0;border-radius:0;}
-  @page{margin:16mm;}
+  /* 여러 장으로 넘어갈 때 표 머리글을 매 장 반복하고 행이 잘리지 않게 합니다 */
+  table.rt thead{display:table-header-group;}
+  table.rt tfoot{display:table-footer-group;}
+  table.rt tr,.rsec{break-inside:avoid;page-break-inside:avoid;}
+  table.rt.detail{font-size:10.5px;}
+  table.rt.detail th,table.rt.detail td{padding:4px 6px;}
+  .rhead{break-after:avoid;page-break-after:avoid;}
+  .sign{break-inside:avoid;page-break-inside:avoid;}
+  @page{margin:14mm;}
 }
 </style>
 </head>
@@ -479,7 +494,11 @@ table.rt tfoot td{background:#F7F7F4;font-weight:700;border-top:1.5px solid var(
 
     <section id="view-report" hidden>
       <div class="filters noprint" style="margin-bottom:14px;">
-        <select id="rPeriod"><option value="year">연간 결산</option><option value="month">월간 보고</option></select>
+        <select id="rKind">
+          <option value="summary">결산 보고서 (과목별 집계)</option>
+          <option value="detail">거래 명세서 (건별 내역)</option>
+        </select>
+        <select id="rPeriod"><option value="year">연간</option><option value="month">월간</option></select>
         <select id="rMonth"></select>
         <button class="btn btn-sm btn-navy" onclick="window.print()">인쇄 / PDF 저장</button>
       </div>
@@ -674,7 +693,7 @@ const onlyNum = s => parseInt(String(s).replace(/[^0-9]/g,''),10) || 0;
 
 let ST = { user:null, isAdmin:false, depts:{}, order:[], tx:[], cats:[] };
 let cur = { dept:null, view:'list', kind:'out', q:'', month:'all', kfilter:'all',
-            cat:'all', rcpt:'all', rperiod:'year', rmonth:new Date().getMonth()+1,
+            cat:'all', rcpt:'all', rkind:'summary', rperiod:'year', rmonth:new Date().getMonth()+1,
             file:null, editId:null, editPath:null };
 
 function toast(m, isErr){
@@ -1053,6 +1072,82 @@ function setKind(k){
   renderInputCats();
 }
 function renderReport(){
+  if(cur.rkind === 'detail') return renderDetailReport();
+  return renderSummaryReport();
+}
+
+/* ── 거래 명세서: 건별 내역을 통장처럼 나열 ── */
+function renderDetailReport(){
+  const d = dept(), isY = cur.rperiod==='year';
+  const all = txOf(cur.dept);
+  let run = d.carry;
+  const withRun = all.map(t=>{ run += (t.kind==='in'?t.amount:-t.amount); return {...t, run}; });
+  const list = withRun.filter(t=> isY || +t.date.split('-')[1] === +cur.rmonth);
+
+  const opening = list.length
+    ? list[0].run - (list[0].kind==='in' ? list[0].amount : -list[0].amount)
+    : (isY ? d.carry : (monthlyRows(cur.dept)[+cur.rmonth-1] || {open:d.carry}).open);
+  const si = list.filter(t=>t.kind==='in').reduce((s,t)=>s+t.amount,0);
+  const so = list.filter(t=>t.kind==='out').reduce((s,t)=>s+t.amount,0);
+  const closing = opening + si - so;
+  const period = isY ? `${YEAR}. 1. 1. ~ ${YEAR}. 12. 31.` : `${YEAR}년 ${cur.rmonth}월`;
+
+  const body = list.length ? list.map(t=>`
+    <tr>
+      <td class="num">${t.date.slice(5).replace('-','. ')}</td>
+      ${isAll()?`<td>${esc(ST.depts[t.dept_id].name)}</td>`:''}
+      <td>${t.cat}</td>
+      <td class="memo">${esc(t.memo)||'—'}</td>
+      <td>${esc(t.vendor)||''}</td>
+      <td class="r num cin">${t.kind==='in'  ? t.amount.toLocaleString('ko-KR') : ''}</td>
+      <td class="r num cout">${t.kind==='out' ? t.amount.toLocaleString('ko-KR') : ''}</td>
+      <td class="r num">${t.run.toLocaleString('ko-KR')}</td>
+      <td class="ck">${t.file ? '○' : ''}</td>
+    </tr>`).join('')
+    : `<tr><td colspan="${isAll()?9:8}" style="text-align:center;color:var(--muted);padding:24px">해당 기간 내역이 없습니다.</td></tr>`;
+
+  $('#reportArea').innerHTML = `
+    <div class="rhead">
+      <h3>${d.name} 거래 명세서</h3>
+      <p>${esc(CFG.church)} ${esc(CFG.group_name)} · ${period}</p>
+    </div>
+    <table class="rt detail">
+      <thead><tr>
+        <th style="width:56px">일자</th>
+        ${isAll()?'<th style="width:78px">부서</th>':''}
+        <th style="width:92px">과목</th>
+        <th>적요</th>
+        <th style="width:90px">거래처</th>
+        <th class="r" style="width:88px">수입</th>
+        <th class="r" style="width:88px">지출</th>
+        <th class="r" style="width:96px">잔액</th>
+        <th class="ck" style="width:34px">증빙</th>
+      </tr></thead>
+      <tbody>
+        <tr class="carryrow">
+          <td colspan="${isAll()?5:4}">${isY ? '전기 이월금' : '전월 이월금'}</td>
+          <td class="r"></td><td class="r"></td>
+          <td class="r num">${opening.toLocaleString('ko-KR')}</td><td></td>
+        </tr>
+        ${body}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="${isAll()?5:4}">합계 <span style="font-weight:400;color:var(--muted)">(${list.length}건)</span></td>
+        <td class="r num cin">${si.toLocaleString('ko-KR')}</td>
+        <td class="r num cout">${so.toLocaleString('ko-KR')}</td>
+        <td class="r num" style="font-size:14px">${closing.toLocaleString('ko-KR')}</td>
+        <td class="ck">${list.filter(t=>t.file).length}</td>
+      </tr></tfoot>
+    </table>
+    <div style="margin-top:10px;font-size:11.5px;color:var(--muted)">
+      증빙란의 ○ 표시는 영수증이 첨부된 거래입니다.
+    </div>
+    <div class="sign">${isAll()
+      ? `<div>${esc(CFG.group_name)} 회계<u></u></div><div>${esc(CFG.group_name)} 부장<u></u></div><div>재정부장<u></u></div>`
+      : '<div>부서 회계<u></u></div><div>부서장<u></u></div><div>재정부장<u></u></div>'}</div>`;
+}
+
+function renderSummaryReport(){
   const d = dept(), isY = cur.rperiod==='year';
   const list = txOf(cur.dept).filter(t=> isY || +t.date.split('-')[1] === +cur.rmonth);
   const grp = k => {
@@ -1541,6 +1636,7 @@ $('#btnSave').addEventListener('click', async ()=>{
 });
 
 /* 보고서 */
+$('#rKind').addEventListener('change', e=>{ cur.rkind = e.target.value; renderReport(); });
 $('#rPeriod').addEventListener('change', e=>{
   cur.rperiod = e.target.value;
   $('#rMonth').hidden = (cur.rperiod==='year');
