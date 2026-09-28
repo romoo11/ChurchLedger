@@ -150,6 +150,29 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
   background:var(--tag-beige);color:var(--tag-beige-tx);}
 @media (max-width:760px){ .mhide{display:none;} }
 
+.band2{background:#FCFCFA;padding-top:10px;padding-bottom:10px;}
+.band2 .dpill{background:#F1F1EC;font-size:12.5px;padding:6px 14px;}
+.band2 .dpill:hover{background:#E7E7E1;}
+.band2 .dpill[aria-current="true"]{background:var(--gold);color:#20180A;}
+.band .lbl{font-size:11.5px;color:var(--muted);white-space:nowrap;margin-right:2px;}
+.band2:empty{display:none;}
+
+/* 조직 설정 */
+.orgblock{border:1px solid var(--line);border-radius:var(--r-card);margin-bottom:12px;overflow:hidden;}
+.orghead{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;background:#F7F7F4;
+  border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.orghead .n{font-weight:700;font-size:14px;}
+.orghead .h{font-size:12px;color:var(--muted);}
+.orghead .acts{margin-left:auto;display:flex;gap:6px;}
+.orgdepts{padding:10px 14px;display:flex;flex-direction:column;gap:6px;}
+.orgrow{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
+.orgrow .nm{font-weight:600;}
+.orgrow.off .nm{color:var(--muted);text-decoration:line-through;}
+.orgrow .cnt{font-size:11.5px;color:var(--muted);}
+.orgrow .acts{margin-left:auto;display:flex;gap:6px;}
+.orgempty{font-size:12.5px;color:var(--muted);padding:2px 0;}
+
 .searchbox{width:100%;padding:13px 16px;border:1px solid var(--line-2);border-radius:var(--r-input);
   background:var(--card);margin-bottom:10px;}
 .searchbox::placeholder{color:#A9A9A3;}
@@ -421,13 +444,15 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
     <button class="pill" data-view="request">예산 청구<span id="reqBadge" class="badge" hidden></span></button>
     <button class="pill" data-view="setting">예산·과목</button>
     <button class="pill" data-view="admin" id="pillAdmin" hidden>담당자</button>
+    <button class="pill" data-view="org" id="pillOrg" hidden>설정</button>
     <button class="pill pill-gold" data-view="input">+ 새 기록</button>
   </nav>
   <button class="homelink" id="btnHome">대문</button>
   <button class="userlink" id="btnLogout">로그아웃</button>
 </header>
 
-<div class="band" id="deptBand"></div>
+<div class="band" id="divBand"></div>
+<div class="band band2" id="deptBand"></div>
 
 <div class="wrap">
   <div id="bootLoading" class="loading">장부를 불러오는 중…</div>
@@ -677,6 +702,47 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
       </div>
     </section>
 
+    <section id="view-org" hidden>
+      <div class="panel">
+        <h2>조직 관리 <em>담당부서 아래에 부서를 둡니다</em></h2>
+        <div class="pbody">
+          <div id="orgArea"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>담당부서 개설</h2>
+        <div class="pbody">
+          <div class="two">
+            <input type="text" id="oDivName" placeholder="예) 청년선교부" autocomplete="off">
+            <button class="btn btn-gold" id="btnDivAdd" style="flex:none">개설</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>부서 개설</h2>
+        <div class="pbody">
+          <div class="field">
+            <label for="oDeptDiv">소속 담당부서</label>
+            <select id="oDeptDiv"></select>
+          </div>
+          <div class="two">
+            <div class="field"><label for="oDeptName">부서 이름</label>
+              <input type="text" id="oDeptName" placeholder="예) 영아부" autocomplete="off"></div>
+            <div class="field"><label for="oDeptBudget">올해 예산 <span style="color:var(--muted)">(선택)</span></label>
+              <input type="text" id="oDeptBudget" inputmode="numeric" placeholder="0"></div>
+          </div>
+          <button class="btn btn-gold" id="btnDeptAdd">부서 개설</button>
+          <div class="note" style="margin-top:14px;">
+            부서를 개설하면 올해 예산 칸과 기본 과목이 함께 만들어집니다.
+            거래 기록이 있는 부서는 삭제할 수 없고 <b>숨김</b>으로 처리됩니다.
+            숨긴 부서의 장부는 그대로 남아 있으며 언제든 다시 표시할 수 있습니다.
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="view-setting" hidden>
       <div class="panel">
         <h2>예산·과목 <em id="setRole"></em></h2>
@@ -803,7 +869,7 @@ const onlyNum = s => parseInt(String(s).replace(/[^0-9]/g,''),10) || 0;
 let ST = { user:null, isAdmin:false, depts:{}, order:[], tx:[], cats:[] };
 let cur = { dept:null, view:'list', kind:'out', q:'', month:'all', kfilter:'all',
             cat:'all', rcpt:'all', rkind:'summary', rperiod:'year', rmonth:new Date().getMonth()+1,
-            file:null, editId:null, editPath:null };
+            file:null, editId:null, editPath:null, division:'all' };
 
 function toast(m, isErr){
   const t = $('#toast');
@@ -966,7 +1032,7 @@ async function loadAll(){
   const [admins, myDepts, depts, periods, cats, txs] = await Promise.all([
     sb.from('acct_admins').select('user_id, can_edit, can_approve, can_pay').eq('user_id', ST.user.id),
     sb.from('acct_dept_users').select('dept_id, role').eq('user_id', ST.user.id),
-    sb.from('acct_departments').select('id, name, sort_order').eq('active', true).order('sort_order'),
+    sb.from('acct_departments').select('id, name, sort_order, division_id').eq('active', true).order('sort_order'),
     sb.from('acct_periods').select('dept_id, budget, carry_over, closed').eq('year', YEAR),
     sb.from('acct_categories').select('id, dept_id, kind, name, sort_order').eq('active', true).order('sort_order'),
     sb.from('acct_transactions')
@@ -992,7 +1058,7 @@ async function loadAll(){
   visible.forEach(d=>{
     const p = perMap[d.id] || { budget:0, carry_over:0, closed:false };
     ST.depts[d.id] = {
-      id:d.id, name:d.name,
+      id:d.id, name:d.name, division_id:d.division_id,
       budget:p.budget, carry:p.carry_over, closed:p.closed,
       canWrite: roleMap[d.id] === 'accountant' || ST.canEditAll,
       cats:{ in:[], out:[] }
@@ -1055,12 +1121,39 @@ function monthlyRows(id){
 
 /* ═══════════ 렌더 ═══════════ */
 function renderBand(){
-  const pills = [];
-  if(ST.order.length > 1)
-    pills.push(`<button class="dpill" data-d="${ALL}" aria-current="${isAll()}">전체</button>`);
-  ST.order.forEach(k=> pills.push(
-    `<button class="dpill" data-d="${k}" aria-current="${k===cur.dept}">${ST.depts[k].name}</button>`));
-  $('#deptBand').innerHTML = pills.join('');
+  /* 1단: 담당부서 — 소속 부서가 있는 곳만 표시 */
+  const byDiv = {};
+  ST.order.forEach(k=>{
+    const dv = ST.depts[k].division_id || '_none';
+    (byDiv[dv] = byDiv[dv] || []).push(k);
+  });
+  const divs = DIVISIONS.filter(d=> byDiv[d.id]);
+  const hasNone = !!byDiv['_none'];
+
+  if(ST.order.length > 1 || divs.length > 1){
+    const top = [`<span class="lbl">담당부서</span>`];
+    if(ST.order.length > 1)
+      top.push(`<button class="dpill" data-div="${ALL}" aria-current="${cur.division===ALL}">전체</button>`);
+    divs.forEach(d=>
+      top.push(`<button class="dpill" data-div="${d.id}" aria-current="${cur.division===d.id}">${esc(d.name)}</button>`));
+    if(hasNone)
+      top.push(`<button class="dpill" data-div="_none" aria-current="${cur.division==='_none'}">미분류</button>`);
+    $('#divBand').innerHTML = top.join('');
+    $('#divBand').hidden = false;
+  }else{
+    $('#divBand').hidden = true;
+  }
+
+  /* 2단: 선택한 담당부서의 부서 */
+  const keys = cur.division === ALL
+    ? ST.order
+    : (byDiv[cur.division] || []);
+  const rows = [];
+  if(keys.length > 1 && cur.division === ALL)
+    rows.push(`<button class="dpill" data-d="${ALL}" aria-current="${isAll()}">전체</button>`);
+  keys.forEach(k=>
+    rows.push(`<button class="dpill" data-d="${k}" aria-current="${k===cur.dept}">${esc(ST.depts[k].name)}</button>`));
+  $('#deptBand').innerHTML = rows.length > 1 ? rows.join('') : (keys.length===1 ? rows.join('') : '');
 }
 function renderSummary(){
   const d = dept();
@@ -1635,6 +1728,121 @@ $('#reqArea').addEventListener('click', async e=>{
   }
 });
 
+/* ═══════════ 조직 관리 ═══════════ */
+async function renderOrg(){
+  await loadDivisions();
+  $('#oDeptDiv').innerHTML = DIVISIONS.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+
+  const { data, error } = await sb.rpc('acct_org_list');
+  const area = $('#orgArea');
+  if(error){
+    area.innerHTML = `<div style="color:var(--expense);font-size:13px">${esc(error.message)}</div>`;
+    return;
+  }
+  /* 담당부서별로 묶기 */
+  const map = new Map();
+  data.forEach(r=>{
+    if(!map.has(r.division_id))
+      map.set(r.division_id, { name:r.division_name, heads:r.head_names, depts:[] });
+    if(r.dept_id) map.get(r.division_id).depts.push(r);
+  });
+
+  area.innerHTML = [...map.entries()].map(([divId, g])=>`
+    <div class="orgblock">
+      <div class="orghead">
+        <span class="n">${esc(g.name)}</span>
+        <span class="h">${g.heads ? '부장 '+esc(g.heads) : '부장 미배정'}</span>
+        <span class="acts">
+          <button class="btn btn-sm btn-danger" data-divdel="${divId}" data-name="${esc(g.name)}">삭제</button>
+        </span>
+      </div>
+      <div class="orgdepts">
+        ${g.depts.length ? g.depts.map(d=>`
+          <div class="orgrow ${d.active?'':'off'}">
+            <span class="nm">${esc(d.dept_name)}</span>
+            <span class="cnt">${d.tx_count > 0 ? d.tx_count+'건' : '거래 없음'}${d.active?'':' · 숨김'}</span>
+            <span class="acts">
+              <select data-move="${d.dept_id}" style="padding:4px 8px;border:1px solid var(--line-2);border-radius:6px;font-size:12px;">
+                ${DIVISIONS.map(v=>`<option value="${v.id}" ${v.id===divId?'selected':''}>${esc(v.name)}</option>`).join('')}
+              </select>
+              <button class="btn btn-sm" data-hide="${d.dept_id}" data-on="${d.active?'1':'0'}"
+                >${d.active?'숨김':'표시'}</button>
+              ${d.tx_count > 0 ? '' :
+                `<button class="btn btn-sm btn-danger" data-deptdel="${d.dept_id}" data-name="${esc(d.dept_name)}">삭제</button>`}
+            </span>
+          </div>`).join('')
+        : '<div class="orgempty">소속 부서가 없습니다.</div>'}
+      </div>
+    </div>`).join('');
+}
+
+$('#btnDivAdd').addEventListener('click', async ()=>{
+  const name = $('#oDivName').value.trim();
+  if(!name){ toast('이름을 입력하세요'); return; }
+  const { data, error } = await sb.rpc('acct_div_create', { p_name: name });
+  if(error){ toast(error.message, true); return; }
+  toast(data); $('#oDivName').value = '';
+  DIVISIONS = []; await renderOrg();
+});
+
+$('#oDeptBudget').addEventListener('input', e=>{
+  const n = onlyNum(e.target.value);
+  e.target.value = n ? n.toLocaleString('ko-KR') : '';
+});
+$('#btnDeptAdd').addEventListener('click', async ()=>{
+  const name = $('#oDeptName').value.trim();
+  const div  = $('#oDeptDiv').value;
+  if(!name){ toast('부서 이름을 입력하세요'); return; }
+  if(!div){ toast('소속 담당부서를 선택하세요'); return; }
+  const btn = $('#btnDeptAdd');
+  btn.disabled = true; btn.textContent = '개설 중…';
+  const { data, error } = await sb.rpc('acct_dept_create', {
+    p_name: name, p_division: div, p_budget: onlyNum($('#oDeptBudget').value) });
+  btn.disabled = false; btn.textContent = '부서 개설';
+  if(error){ toast(error.message, true); return; }
+  toast(data);
+  $('#oDeptName').value=''; $('#oDeptBudget').value='';
+  await loadAll(); renderAll(); renderOrg();
+});
+
+$('#orgArea').addEventListener('change', async e=>{
+  const sel = e.target.closest('[data-move]'); if(!sel) return;
+  const { data, error } = await sb.rpc('acct_dept_move',
+    { p_id: sel.dataset.move, p_division: sel.value });
+  if(error){ toast(error.message, true); renderOrg(); return; }
+  toast(data);
+  await loadAll(); renderAll(); renderOrg();
+});
+
+$('#orgArea').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-divdel],[data-deptdel],[data-hide]'); if(!b) return;
+  const d = b.dataset;
+  b.disabled = true;
+  try{
+    if(d.divdel){
+      if(!confirm(`${d.name}\n\n이 담당부서를 삭제할까요?`)) return;
+      const { data:m, error } = await sb.rpc('acct_div_delete', { p_id: d.divdel });
+      if(error) throw error;
+      toast(m); DIVISIONS = [];
+    }
+    else if(d.deptdel){
+      if(!confirm(`${d.name}\n\n이 부서를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+      const { data:m, error } = await sb.rpc('acct_dept_delete', { p_id: d.deptdel });
+      if(error) throw error;
+      toast(m);
+    }
+    else if(d.hide){
+      const hide = d.on === '1';
+      const { data:m, error } = await sb.rpc('acct_dept_hide', { p_id: d.hide, p_hide: hide });
+      if(error) throw error;
+      toast(m);
+    }
+    await loadAll(); renderAll(); renderOrg();
+  }catch(err){
+    toast(err.message || String(err), true);
+  }finally{ b.disabled = false; }
+});
+
 /* ═══════════ 담당부서 부장 ═══════════ */
 async function renderHeads(){
   await loadDivisions();
@@ -1818,9 +2026,9 @@ function show(v){
 }
 function showRaw(v){
   if(v==='setting' && isAll()){ toast('부서를 먼저 선택하세요'); return; }
-  if(v==='admin' && !ST.isAdmin){ toast('관리자만 볼 수 있습니다'); return; }
+  if((v==='admin'||v==='org') && !ST.isAdmin){ toast('관리자만 볼 수 있습니다'); return; }
   cur.view = v;
-  ['list','input','report','setting','admin','request'].forEach(x=> $('#view-'+x).hidden = (x!==v));
+  ['list','input','report','setting','admin','request','org'].forEach(x=> $('#view-'+x).hidden = (x!==v));
   $$('.navpills .pill').forEach(b=>{
     if(b.dataset.view===v && !b.classList.contains('pill-gold')) b.setAttribute('aria-current','page');
     else b.removeAttribute('aria-current');
@@ -1828,6 +2036,7 @@ function showRaw(v){
   if(v==='list'){ renderMonthly(); renderList(); }
   if(v==='report') renderReport();
   if(v==='setting') renderSetting();
+  if(v==='org') renderOrg();
   if(v==='admin'){ renderNameForm(); renderHeads(); renderAdminForm(); renderPending(); renderMembers(); }
   if(v==='request'){
     const canReq = !isAll() && dept().canWrite && !dept().closed;
@@ -1846,9 +2055,26 @@ function renderAll(){
 
 /* ═══════════ 이벤트 ═══════════ */
 $$('.navpills .pill').forEach(b=> b.addEventListener('click', ()=> show(b.dataset.view)));
+$('#divBand').addEventListener('click', e=>{
+  const b = e.target.closest('[data-div]'); if(!b) return;
+  cur.division = b.dataset.div;
+  /* 그 담당부서의 첫 부서로 이동. 전체면 합산 보기 */
+  if(cur.division === ALL){
+    cur.dept = ST.order.length > 1 ? ALL : ST.order[0];
+  }else{
+    const first = ST.order.find(k=>
+      (ST.depts[k].division_id || '_none') === cur.division);
+    cur.dept = first || cur.dept;
+  }
+  cur.cat = 'all';
+  renderAll();
+  if(isAll() && (cur.view==='input'||cur.view==='setting'||cur.view==='request')) show('list');
+});
 $('#deptBand').addEventListener('click', e=>{
   const b = e.target.closest('[data-d]'); if(!b) return;
   cur.dept = b.dataset.d; cur.cat = 'all';
+  if(!isAll() && ST.depts[cur.dept])
+    cur.division = ST.depts[cur.dept].division_id || '_none';
   renderAll();
   if(isAll() && (cur.view==='input'||cur.view==='setting')) show('list');
 });
@@ -2207,6 +2433,7 @@ async function run(){
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('데이터 요청 응답 없음 (15초 초과)')), 15000))
     ]);
     dbg('데이터도착');
+    await loadDivisions();
     if(!ST.order.length){
       $('#bootLoading').innerHTML =
         '<strong>승인을 기다리는 중입니다</strong><br>' +
@@ -2217,6 +2444,7 @@ async function run(){
     $('#bootLoading').hidden = true;
     $('#appBody').hidden = false;
     $('#pillAdmin').hidden = !ST.isAdmin;
+    $('#pillOrg').hidden   = !ST.isAdmin;
     setKind('out');
     renderAll();
     show('list');
