@@ -418,7 +418,7 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
   <nav class="navpills">
     <button class="pill" data-view="list" aria-current="page">장부</button>
     <button class="pill" data-view="report">결산 보고</button>
-    <button class="pill" data-view="request">특별예산 청구<span id="reqBadge" class="badge" hidden></span></button>
+    <button class="pill" data-view="request">예산 청구<span id="reqBadge" class="badge" hidden></span></button>
     <button class="pill" data-view="setting">예산·과목</button>
     <button class="pill" data-view="admin" id="pillAdmin" hidden>담당자</button>
     <button class="pill pill-gold" data-view="input">+ 새 기록</button>
@@ -555,6 +555,26 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
         </div>
       </div>
       <div class="panel">
+        <h2>담당부서 부장 <em>일반청구를 확인할 부장을 지정합니다</em></h2>
+        <div class="pbody">
+          <div class="field">
+            <label for="hEmail">계정 이메일</label>
+            <input type="text" id="hEmail" placeholder="name@example.com" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="hDiv">담당부서</label>
+            <select id="hDiv"><option value="">불러오는 중…</option></select>
+          </div>
+          <button class="btn btn-gold" id="btnHeadGrant">부장 배정</button>
+          <div class="tablewrap" id="headArea" style="margin-top:16px;"></div>
+          <div class="note" style="margin-top:14px;">
+            일반청구는 청구서에 적힌 담당부서의 부장이 확인합니다.
+            특별예산은 담임목사가 확인하며, 담임목사는 모든 청구를 확인할 수 있습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
         <h2>승인 대기 <em id="pCount">회계 가입 화면을 거친 계정만 표시됩니다</em></h2>
         <div class="tablewrap" id="pendingArea"></div>
       </div>
@@ -595,8 +615,20 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
     </section>
     <section id="view-request" hidden>
       <div class="panel" id="reqFormPanel">
-        <h2>특별예산 청구 <em>월 활동비로 감당하기 어려운 지출을 신청합니다</em></h2>
+        <h2>예산 청구 <em>월 활동비로 감당하기 어려운 지출을 신청합니다</em></h2>
         <div class="pbody">
+          <div class="field">
+            <label>청구 유형</label>
+            <div class="kindseg" role="group" aria-label="청구 유형">
+              <button type="button" data-rtype="normal" aria-pressed="true">일반청구</button>
+              <button type="button" data-rtype="special" aria-pressed="false">특별예산</button>
+            </div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:7px;" id="qTypeHint"></div>
+          </div>
+          <div class="field" id="qDivField">
+            <label for="qDiv">담당부서</label>
+            <select id="qDiv"><option value="">불러오는 중…</option></select>
+          </div>
           <div class="field">
             <label for="qTitle">청구 제목</label>
             <input type="text" id="qTitle" placeholder="예) 여름성경학교 강사비" autocomplete="off">
@@ -1370,6 +1402,28 @@ $('#reqFilter').addEventListener('change', ()=> renderRequests());
 
 const DOCS = 'acct-docs';
 let qDocFile = null;
+let DIVISIONS = [];
+let qType = 'normal';
+
+function setReqType(t){
+  qType = t;
+  $$('[data-rtype]').forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.rtype===t)));
+  $('#qDivField').hidden = (t === 'special');
+  $('#qTypeHint').textContent = t === 'special'
+    ? '연초 예산에 없던 지출입니다. 담임목사 확인을 거칩니다.'
+    : '정기 예산 범위의 지출입니다. 담당부서 부장이 확인합니다.';
+}
+$$('[data-rtype]').forEach(b=> b.addEventListener('click', ()=> setReqType(b.dataset.rtype)));
+
+async function loadDivisions(){
+  if(DIVISIONS.length) return;
+  const { data, error } = await sb.from('acct_divisions')
+    .select('id,name').eq('active', true).order('sort_order');
+  if(error || !data){ $('#qDiv').innerHTML = '<option value="">목록을 불러오지 못했습니다</option>'; return; }
+  DIVISIONS = data;
+  $('#qDiv').innerHTML = '<option value="">담당부서를 선택하세요</option>' +
+    data.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+}
 
 $('#qDrop').addEventListener('click', ()=> $('#qFile').click());
 $('#qDrop').addEventListener('keydown', e=>{
@@ -1399,6 +1453,8 @@ $('#btnReqSubmit').addEventListener('click', async ()=>{
   if(!title){ toast('청구 제목을 입력하세요'); $('#qTitle').focus(); return; }
   if(!amount){ toast('청구 금액을 입력하세요'); $('#qAmt').focus(); return; }
   if(!reason){ toast('청구 사유를 입력하세요'); $('#qReason').focus(); return; }
+  const division_id = qType === 'special' ? null : $('#qDiv').value;
+  if(qType === 'normal' && !division_id){ toast('담당부서를 선택하세요'); $('#qDiv').focus(); return; }
 
   const btn = $('#btnReqSubmit');
   btn.disabled = true; btn.textContent = '제출 중…';
@@ -1415,6 +1471,7 @@ $('#btnReqSubmit').addEventListener('click', async ()=>{
     }
     const { error } = await sb.from('acct_requests').insert({
       dept_id: cur.dept, title, amount, reason,
+      req_type: qType, division_id,
       needed_by: $('#qDate').value || null, doc_path, doc_name
     });
     if(error) throw error;
@@ -1423,7 +1480,9 @@ $('#btnReqSubmit').addEventListener('click', async ()=>{
     qDocFile = null; $('#qFile').value='';
     $('#qDrop').textContent = '행사 계획서·견적서 등을 첨부하세요';
     $('#qDrop').classList.remove('has');
-    toast('청구서를 제출했습니다. 담임목사 확인을 기다립니다');
+    toast(qType==='special'
+      ? '청구서를 제출했습니다. 담임목사 확인을 기다립니다'
+      : '청구서를 제출했습니다. 담당부서 부장 확인을 기다립니다');
     renderRequests();
   }catch(err){
     toast('제출 실패: '+(err.message||err), true);
@@ -1437,10 +1496,13 @@ function reqSteps(r){
   if(s === 'rejected')
     return `<span class="step done">신청</span><span class="step no">반려</span>`;
   const mk = (label, state)=> `<span class="step ${state}">${label}</span>`;
+  const who = r.req_type==='special'
+    ? '담임목사 확인'
+    : (r.division_name ? r.division_name+' 부장 확인' : '담당부장 확인');
   return [
     mk('신청', 'done'),
-    mk('담임목사 확인', s==='requested' ? 'now' : 'done'),
-    mk('재정부 지급',   s==='paid' ? 'done' : (s==='approved' ? 'now' : ''))
+    mk(who, s==='requested' ? 'now' : 'done'),
+    mk('재정부 지급', s==='paid' ? 'done' : (s==='approved' ? 'now' : ''))
   ].join('');
 }
 
@@ -1459,7 +1521,7 @@ async function renderRequests(){
   REQ_CACHE = data;
   const rows = isAll() ? data : data.filter(r=> r.dept_id === cur.dept);
   const waiting = data.filter(r=>
-    (r.status==='requested' && ST.canApprove) || (r.status==='approved' && ST.canPay)).length;
+    (r.status==='requested' && r.can_approve) || (r.status==='approved' && ST.canPay)).length;
   const badge = $('#reqBadge');
   badge.hidden = waiting === 0;
   badge.textContent = waiting;
@@ -1471,7 +1533,7 @@ async function renderRequests(){
   }
   area.innerHTML = rows.map(r=>{
     const acts = [];
-    if(r.status==='requested' && ST.canApprove){
+    if(r.status==='requested' && r.can_approve){
       acts.push(`<button class="btn btn-sm btn-gold" data-approve="${r.id}">확인</button>`);
       acts.push(`<button class="btn btn-sm btn-danger" data-reject="${r.id}">반려</button>`);
     }
@@ -1480,7 +1542,7 @@ async function renderRequests(){
                    data-title="${esc(r.title)}">지급 처리</button>`);
       acts.push(`<button class="btn btn-sm btn-danger" data-reject="${r.id}">반려</button>`);
     }
-    if(r.status==='requested' && ST.depts[r.dept_id]?.canWrite && !ST.canApprove){
+    if(r.status==='requested' && ST.depts[r.dept_id]?.canWrite && !r.can_approve){
       acts.push(`<button class="btn btn-sm btn-danger" data-cancel="${r.id}">청구 취소</button>`);
     }
     let note = '';
@@ -1500,6 +1562,8 @@ async function renderRequests(){
         <span class="a ${r.status==='paid'?'cin':''}">${won(r.amount)}</span>
       </div>
       <div class="reqmeta">
+        <span class="tag ${r.req_type==='special'?'red':'blue'}">${r.req_type==='special'?'특별예산':'일반청구'}</span>
+        ${r.division_name?`<span class="tag beige">${esc(r.division_name)}</span> `:' '}
         ${isAll()?`<span class="tag navy">${esc(r.dept_name)}</span> `:''}
         ${r.requested_at.slice(0,10)} · ${esc(r.requester||'')} 신청
         ${r.needed_by?` · 필요 시기 ${r.needed_by}`:''}
@@ -1569,6 +1633,60 @@ $('#reqArea').addEventListener('click', async e=>{
   }finally{
     btn.disabled = false;
   }
+});
+
+/* ═══════════ 담당부서 부장 ═══════════ */
+async function renderHeads(){
+  await loadDivisions();
+  $('#hDiv').innerHTML = '<option value="">담당부서를 선택하세요</option>' +
+    DIVISIONS.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+
+  const { data, error } = await sb.rpc('acct_head_list');
+  const area = $('#headArea');
+  if(error){
+    area.innerHTML = `<div style="padding:16px;color:var(--expense);font-size:13px">${esc(error.message)}</div>`;
+    return;
+  }
+  if(!data.length){
+    area.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:13px">배정된 부장이 없습니다.</div>';
+    return;
+  }
+  area.innerHTML = `
+  <table class="mtable">
+    <thead><tr><th>담당부서</th><th style="text-align:left">부장</th>
+      <th style="text-align:left">계정</th><th style="width:80px"></th></tr></thead>
+    <tbody>${data.map(h=>`
+      <tr style="cursor:default">
+        <td><span class="tag beige">${esc(h.division_name)}</span></td>
+        <td style="text-align:left">${esc(h.name)}</td>
+        <td style="text-align:left;color:var(--muted)">${esc(h.email)}</td>
+        <td><button class="btn btn-sm" data-headrm="${h.user_id}" data-div="${h.division_id}"
+              data-label="${esc(h.email)} · ${esc(h.division_name)}">해제</button></td>
+      </tr>`).join('')}</tbody>
+  </table>`;
+}
+$('#btnHeadGrant').addEventListener('click', async ()=>{
+  const email = $('#hEmail').value.trim();
+  const div   = $('#hDiv').value;
+  if(!email){ toast('이메일을 입력하세요'); $('#hEmail').focus(); return; }
+  if(!div){ toast('담당부서를 선택하세요'); return; }
+  const btn = $('#btnHeadGrant');
+  btn.disabled = true; btn.textContent = '배정 중…';
+  const { data, error } = await sb.rpc('acct_head_grant', { p_email: email, p_division: div });
+  btn.disabled = false; btn.textContent = '부장 배정';
+  if(error){ toast(error.message, true); return; }
+  toast(data);
+  $('#hEmail').value = '';
+  renderHeads();
+});
+$('#headArea').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-headrm]'); if(!b) return;
+  if(!confirm(`${b.dataset.label}\n\n부장 권한을 해제할까요?`)) return;
+  const { data, error } = await sb.rpc('acct_head_revoke',
+    { p_user: b.dataset.headrm, p_division: b.dataset.div });
+  if(error){ toast(error.message, true); return; }
+  toast(data);
+  renderHeads();
 });
 
 /* ═══════════ 표시 설정 ═══════════ */
@@ -1710,10 +1828,11 @@ function showRaw(v){
   if(v==='list'){ renderMonthly(); renderList(); }
   if(v==='report') renderReport();
   if(v==='setting') renderSetting();
-  if(v==='admin'){ renderNameForm(); renderAdminForm(); renderPending(); renderMembers(); }
+  if(v==='admin'){ renderNameForm(); renderHeads(); renderAdminForm(); renderPending(); renderMembers(); }
   if(v==='request'){
     const canReq = !isAll() && dept().canWrite && !dept().closed;
     $('#reqFormPanel').hidden = !canReq;
+    if(canReq){ loadDivisions(); setReqType(qType); }
     renderRequests();
   }
   window.scrollTo(0,0);
@@ -2101,7 +2220,7 @@ async function run(){
     setKind('out');
     renderAll();
     show('list');
-    if(ST.canApprove || ST.canPay) renderRequests();
+    renderRequests();   // 확인·지급 대기 건수 배지 갱신
     dbg('완료');
   }catch(e){
     dbg('오류');
