@@ -106,6 +106,37 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .pill:disabled{opacity:.4;cursor:not-allowed;}
 .userlink{color:var(--gold-soft);font-size:13px;text-decoration:underline;
   text-underline-offset:3px;background:none;border:0;cursor:pointer;white-space:nowrap;}
+/* 대문 · 내 교회 현황 */
+#coverChurches{width:100%;max-width:880px;margin:0 auto 22px;}
+#coverChurches .ttl{
+  font-size:12px;color:#8B90A0;text-align:center;margin-bottom:10px;letter-spacing:.02em;}
+.chgrid{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.chcard{
+  flex:1 1 260px;max-width:340px;text-align:left;cursor:pointer;
+  background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.14);
+  border-radius:12px;padding:15px 17px;color:#E8E9ED;
+  transition:background .15s,border-color .15s;}
+.chcard:hover{background:rgba(255,255,255,.10);border-color:rgba(217,188,99,.5);}
+.chcard.on{border-color:var(--gold);background:rgba(200,160,42,.12);}
+.chcard .top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.chcard .nm{font-size:16px;font-weight:700;letter-spacing:-0.03em;}
+.chcard .badge2{
+  font-size:10.5px;padding:2px 8px;border-radius:999px;
+  background:var(--gold);color:#20180A;font-weight:700;}
+.chcard .badge3{
+  font-size:10.5px;padding:2px 8px;border-radius:999px;
+  background:rgba(255,255,255,.14);color:#C9CCD6;}
+.chcard .wait{margin-left:auto;font-size:11px;color:#E8A9A0;}
+.chcard dl{display:flex;gap:16px;margin:0;flex-wrap:wrap;}
+.chcard dt{font-size:11px;color:#9CA0AE;margin-bottom:2px;}
+.chcard dd{margin:0;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;}
+.chcard dd.neg{color:#E8A9A0;}
+.chcard .go{
+  margin-top:11px;font-size:11.5px;color:var(--gold-soft);}
+@media (max-width:620px){
+  .chcard{flex:1 1 100%;max-width:none;}
+}
+
 .coverbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
 .coveraction .enter.ghost{
   background:transparent;color:var(--gold-soft);border:1px solid rgba(217,188,99,.55);
@@ -380,6 +411,7 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
     </div>
   </div>
   <div class="coveraction">
+    <div id="coverChurches" hidden></div>
     <div class="coverbtns">
       <button class="enter" id="btnEnter">들어가기</button>
       <button class="enter ghost" id="btnCoverSignup">회원가입</button>
@@ -1824,11 +1856,13 @@ async function renderChurchPanel(){
 
   $('#churchArea').innerHTML = mine.length ? `
     <table class="mtable">
-      <thead><tr><th>내가 속한 교회</th><th style="width:90px">현재</th></tr></thead>
+      <thead><tr><th>내가 속한 교회</th><th style="width:120px">현재</th></tr></thead>
       <tbody>${mine.map(c=>`
         <tr style="cursor:default">
           <td style="text-align:left">${esc(c.name)}</td>
-          <td>${c.is_current ? '<span class="tag navy">사용 중</span>' : ''}</td>
+          <td>${c.is_current
+            ? '<span class="tag navy">사용 중</span>'
+            : `<button class="btn btn-sm btn-gold" data-switch="${c.id}">이 교회로</button>`}</td>
         </tr>`).join('')}</tbody>
     </table>` : '';
 }
@@ -1842,11 +1876,9 @@ $('#btnChurchAdd').addEventListener('click', async ()=>{
   if(error){ toast(error.message, true); return; }
   toast(data);
   $('#oChurchName').value = '';
-  cur.dept = null; cur.division = 'all'; DIVISIONS = [];
-  await loadSettings(true);
-  await loadAll();
-  await loadDivisions();
-  renderAll(); renderChurchSel(); renderOrg();
+  await reloadChurch();
+  renderCoverChurches();
+  renderChurchPanel(); renderOrg();
 });
 
 /* ═══════════ 교회 전환 (여러 교회에 속한 경우) ═══════════ */
@@ -1858,16 +1890,31 @@ async function renderChurchSel(){
     `<option value="${c.id}" ${c.is_current?'selected':''}>${esc(c.name)}</option>`).join('');
   sel.hidden = false;
 }
-$('#churchSel').addEventListener('change', async e=>{
-  const { data, error } = await sb.rpc('acct_church_switch', { p_church: e.target.value });
-  if(error){ toast(error.message, true); return; }
+async function switchChurch(id, stay){
+  const { data, error } = await sb.rpc('acct_church_switch', { p_church: id });
+  if(error){ toast(error.message, true); return false; }
   toast(data);
-  cur.dept = null; cur.division = 'all'; DIVISIONS = [];
+  await reloadChurch();
+  renderCoverChurches();
+  if(stay){ renderChurchPanel(); renderOrg(); } else show('list');
+  return true;
+}
+/* 교회가 바뀌면 화면 상태를 전부 새로 읽습니다. */
+async function reloadChurch(){
+  cur.dept = null; cur.division = 'all'; cur.month = 'all';
+  cur.cat = 'all'; cur.kfilter = 'all'; cur.rcpt = 'all'; cur.q = '';
+  DIVISIONS = []; REQ_CACHE = []; ST.tx = [];
   await loadSettings(true);
   await loadAll();
   await loadDivisions();
   renderAll();
-  show('list');
+  renderChurchSel();
+}
+$('#churchSel').addEventListener('change', e=> switchChurch(e.target.value, false));
+$('#churchArea').addEventListener('click', e=>{
+  const b = e.target.closest('[data-switch]'); if(!b) return;
+  b.disabled = true;
+  switchChurch(b.dataset.switch, true);
 });
 
 /* ═══════════ 조직 관리 ═══════════ */
@@ -2190,6 +2237,17 @@ function showRaw(v){
   window.scrollTo(0,0);
 }
 function renderAll(){
+  const none = !ST.order.length;
+  $('.summary') && ($('.summary').hidden = none);
+  $('.budget')  && ($('.budget').hidden  = none);
+  if(none){
+    renderBand();
+    $('#monthArea').innerHTML = '';
+    $('#listArea').innerHTML =
+      '<div class="empty"><strong>부서가 없습니다</strong>설정에서 부서를 먼저 만들어 주세요.</div>';
+    $('#metaCnt').textContent = '';
+    return;
+  }
   renderBand(); renderCatFilter(); renderInputCats(); renderSummary();
   renderMonthly(); renderList();
   if(cur.view==='report') renderReport();
@@ -2508,6 +2566,7 @@ function showCover(){
   $('#btnCoverSignup').hidden = !!SESSION;
   $('#coverHint').textContent = SESSION
     ? '' : '처음이시면 회원가입에서 교회를 선택하거나 새로 등록하세요';
+  if(SESSION) renderCoverChurches(); else $('#coverChurches').hidden = true;
   window.scrollTo(0,0);
 }
 function openAuth(tab){
@@ -2526,6 +2585,48 @@ $('#coverLogout').addEventListener('click', ()=>{
   location.reload();
 });
 $('#btnHome').addEventListener('click', showCover);
+
+/* 대문에 내가 속한 교회와 현황을 보여줍니다. */
+async function renderCoverChurches(){
+  const box = $('#coverChurches');
+  if(!SESSION){ box.hidden = true; return; }
+  if(!sb) sb = makeClient(SESSION.access_token);
+  let res = await sb.rpc('acct_my_church_cards');
+  if(res.error && /JWT expired/i.test(res.error.message) && await renewNow())
+    res = await sb.rpc('acct_my_church_cards');
+  const rows = Array.isArray(res.data) ? res.data : [];
+  if(!rows.length){ box.hidden = true; return; }
+
+  box.innerHTML =
+    `<div class="ttl">내가 속한 교회 · ${YEAR}년 현황</div>
+     <div class="chgrid">${rows.map(c=>`
+      <div class="chcard ${c.is_current?'on':''}" data-ch="${c.id}">
+        <div class="top">
+          <span class="nm">${esc(c.name)}</span>
+          ${c.is_current ? '<span class="badge2">사용 중</span>'
+                         : '<span class="badge3">전환</span>'}
+          ${c.pending_req > 0 ? `<span class="wait">청구 ${c.pending_req}건 대기</span>` : ''}
+        </div>
+        <dl>
+          <div><dt>부서</dt><dd>${c.dept_count}개</dd></div>
+          <div><dt>올해 거래</dt><dd>${Number(c.tx_count).toLocaleString('ko-KR')}건</dd></div>
+          <div><dt>잔액</dt>
+            <dd class="${c.balance<0?'neg':''}">${Number(c.balance).toLocaleString('ko-KR')}원</dd></div>
+        </dl>
+        <div class="go">${c.is_current ? '눌러서 장부 열기' : '눌러서 이 교회로 전환'}</div>
+      </div>`).join('')}</div>`;
+  box.hidden = false;
+}
+
+$('#coverChurches').addEventListener('click', async e=>{
+  const card = e.target.closest('[data-ch]'); if(!card) return;
+  if(card.classList.contains('on')){ start(); return; }
+  card.style.opacity = '.6';
+  const { error } = await sb.rpc('acct_church_switch', { p_church: card.dataset.ch });
+  if(error){ toast(error.message, true); card.style.opacity = ''; return; }
+  await renderCoverChurches();
+  start();
+});
 
 /* ═══════════ 시작 ═══════════ */
 async function boot(){
@@ -2595,6 +2696,18 @@ async function run(){
     ]);
     dbg('데이터도착');
     await loadDivisions();
+    if(!ST.order.length && (ST.isAdmin || ST.isSuper)){
+      /* 새로 만든 교회 — 부서를 만들면 장부가 열립니다 */
+      $('#pillAdmin').hidden = !ST.isAdmin;
+      $('#pillOrg').hidden   = false;
+      $('#bootLoading').hidden = true;
+      $('#appBody').hidden = false;
+      renderChurchSel();
+      renderBand();
+      show('org');
+      toast('설정에서 부서를 만들면 장부가 열립니다');
+      return;
+    }
     if(!ST.order.length){
       $('#bootLoading').innerHTML =
         '<strong>승인을 기다리는 중입니다</strong><br>' +
