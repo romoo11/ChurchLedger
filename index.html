@@ -27,55 +27,127 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
 
 /* 로그인 */
-.authwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--navy);}
+.authwrap{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:#EEF1EC url('cover.jpg') center/cover no-repeat;}
+.authwrap::before{
+  content:'';position:fixed;inset:0;background:rgba(243,241,234,.62);
+  backdrop-filter:blur(7px);z-index:0;}
+.authcard{position:relative;z-index:1;box-shadow:0 10px 40px rgba(18,78,67,.16);}
+.authcard .btn-gold{
+  background:linear-gradient(180deg,var(--btn-g1),var(--btn-g2));
+  border-color:var(--btn-g2);color:#fff;}
+.authcard .btn-gold:hover{filter:brightness(1.08);background:linear-gradient(180deg,var(--btn-g1),var(--btn-g2));}
+.authcard input:focus,.authcard select:focus{outline-color:var(--btn-g1);border-color:var(--btn-g1);}
+.authcard .linkbtn:hover{color:var(--btn-g1);}
+.authcard .codemsg.ok{color:var(--btn-g2);}
 .authcard{width:100%;max-width:360px;background:var(--card);border-radius:14px;padding:32px 28px;}
-.authcard h1{margin:0 0 4px;font-size:22px;letter-spacing:-0.04em;}
+.authcard h1{margin:0 0 4px;font-size:22px;letter-spacing:-0.04em;color:var(--ink-g);}
 .authcard p.sub{margin:0 0 24px;font-size:12.5px;color:var(--muted);}
 /* 대문 */
+:root{
+  --ink-g:#124E43;        /* 제목 진초록 */
+  --ink-g2:#3F6C61;       /* 부제 */
+  --ink-g3:#7E8486;       /* 설명 */
+  --btn-g1:#2D7F65;
+  --btn-g2:#12533F;
+}
 .coverwrap{
-  min-height:100vh;background:var(--navy);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;padding:0;
+  min-height:100vh;background:#F3F1EA;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;position:relative;
 }
 .coverbar{
-  width:100%;display:flex;align-items:center;justify-content:flex-end;gap:14px;
-  padding:14px 22px;color:#C9CCD6;font-size:13px;
+  position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:3;
+  width:100%;max-width:1672px;display:flex;align-items:center;justify-content:flex-end;
+  gap:12px;padding:16px 26px 0;color:#5E6B66;font-size:13px;
 }
+.coverbar .chip{
+  display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.72);
+  border:1px solid rgba(18,78,67,.12);border-radius:999px;padding:7px 16px;
+  backdrop-filter:blur(6px);
+}
+.coverbar .dot{
+  width:22px;height:22px;border-radius:50%;background:#E4EAE6;flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:#5E6B66;}
 .coverbar button{
-  background:none;border:0;padding:0;cursor:pointer;color:var(--gold-soft);
-  font-size:13px;text-decoration:underline;text-underline-offset:3px;
+  background:none;border:0;padding:0;cursor:pointer;color:#2D7F65;
+  font-size:13px;font-weight:600;}
+.coverbar button:hover{color:var(--ink-g);}
+.coverbar .bar{color:#C9D2CE;}
+
+/* 그림 비율을 그대로 지켜 글자가 그림 요소와 어긋나지 않게 합니다 */
+.hero{
+  position:relative;width:100%;max-width:1672px;aspect-ratio:1672/941;
+  background:url('cover.jpg') center/100% 100% no-repeat;
 }
-.coverstage{
-  flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+.heroin{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  text-align:center;
 }
-.coverimg{
-  display:block;width:100%;max-width:1500px;height:auto;
-}
-.coverfallback{
-  width:100%;max-width:1500px;padding:80px 24px;text-align:center;color:#EDEEF2;
-}
+.heroin > *{
+  position:absolute;left:50%;transform:translate(-50%,-50%);white-space:nowrap;}
+.heroin .eyebrow{
+  top:38.7%;display:flex;align-items:center;gap:1.0cqw;
+  font-size:1.05cqw;letter-spacing:.36em;color:var(--ink-g3);font-weight:600;}
+.heroin .eyebrow i{display:block;width:3.1cqw;height:1px;background:#C2CBC6;}
+.heroin h1{
+  top:45.8%;margin:0;font-size:6.3cqw;line-height:1;letter-spacing:-0.045em;
+  color:var(--ink-g);font-weight:800;}
+.heroin .lead{
+  top:53.8%;display:flex;align-items:center;gap:1.0cqw;
+  font-size:2.1cqw;color:var(--ink-g2);font-weight:600;letter-spacing:-0.02em;}
+.heroin .lead i{display:block;width:2.1cqw;height:1px;background:#B8C4BE;}
+.heroin .tag{top:58.3%;font-size:1.6cqw;color:var(--ink-g3);letter-spacing:-0.01em;}
+.heroin .acts{top:65.9%;display:flex;gap:1.2cqw;}
+.heroin .enter{
+  display:inline-flex;align-items:center;justify-content:center;gap:1.0cqw;cursor:pointer;
+  min-width:19cqw;height:4.3cqw;padding:0 2.6cqw;border-radius:999px;border:0;
+  background:linear-gradient(180deg,var(--btn-g1),var(--btn-g2));
+  color:#fff;font-weight:700;font-size:1.85cqw;letter-spacing:-0.02em;
+  box-shadow:0 .45cqw 1.3cqw rgba(18,78,67,.28);
+  transition:filter .15s,transform .1s;}
+.heroin .enter:hover{filter:brightness(1.08);}
+.heroin .enter:active{transform:translateY(1px);}
+.heroin .enter.ghost{
+  background:rgba(255,255,255,.86);color:var(--btn-g2);
+  border:1px solid rgba(18,78,67,.26);box-shadow:0 .35cqw 1cqw rgba(18,78,67,.10);}
+.heroin .enter.ghost:hover{background:#fff;}
+.heroin .hint{top:72.5%;font-size:1.3cqw;color:#8E9894;}
+.heroin .foot{
+  top:94.5%;font-size:1.25cqw;color:#8E9894;line-height:2.0;text-align:center;}
+.heroin .foot b{color:#6E7975;font-weight:600;}
+.heroin .ver{left:auto;right:3%;top:96.4%;transform:translateY(-50%);
+  font-size:1.15cqw;color:#A9B2AE;}
+.hero{container-type:inline-size;}
+
+.coverfallback{width:100%;padding:70px 24px;text-align:center;color:var(--ink-g);}
 .coverfallback b{display:block;font-size:30px;letter-spacing:-0.04em;margin-bottom:10px;}
-.coverfallback span{font-size:14px;color:#9CA0AE;}
-.coveraction{
-  width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;
-  padding:26px 20px 40px;
-}
-.coveraction .enter{
-  padding:15px 64px;border-radius:999px;border:0;background:var(--gold);
-  color:#20180A;font-weight:700;font-size:16px;cursor:pointer;letter-spacing:-0.02em;
-  transition:background .15s,transform .1s;
-}
-.coveraction .enter:hover{background:#D6AC33;}
-.coveraction .enter:active{transform:translateY(1px);}
-.coveraction .hint{font-size:12px;color:#8B90A0;}
+.coverfallback span{font-size:14px;color:var(--ink-g3);}
+
+.coveraction{width:100%;max-width:1000px;padding:22px 20px 46px;}
+
 .homelink{
   background:none;border:0;padding:0;cursor:pointer;color:#9CA0AE;font-size:13px;
   text-decoration:underline;text-underline-offset:3px;white-space:nowrap;
 }
 .homelink:hover{color:var(--gold-soft);}
-@media (max-width:760px){
-  .coverbar{padding:12px 15px;font-size:12px;}
-  .coveraction{padding:20px 16px 32px;}
-  .coveraction .enter{width:100%;max-width:320px;padding:15px 0;}
+
+/* 좁은 화면에서는 세로로 자른 그림을 씁니다 */
+@media (max-width:700px){
+  .hero{aspect-ratio:677/941;background-image:url('cover-m.jpg');}
+  .heroin .eyebrow{top:38.7%;font-size:2.6cqw;letter-spacing:.3em;gap:2.4cqw;}
+  .heroin .eyebrow i{width:7.5cqw;}
+  .heroin h1{top:45.8%;font-size:15.5cqw;}
+  .heroin .lead{top:53.8%;font-size:5.2cqw;gap:2.4cqw;}
+  .heroin .lead i{width:5cqw;}
+  .heroin .tag{top:58.3%;font-size:3.9cqw;}
+  .heroin .acts{top:69%;flex-direction:column;gap:3cqw;}
+  .heroin .enter{min-width:52cqw;height:11.5cqw;font-size:4.6cqw;gap:2.4cqw;}
+  .heroin .hint{top:83%;font-size:3.0cqw;white-space:normal;width:86%;line-height:1.55;}
+  .heroin .foot{top:94.5%;font-size:2.8cqw;line-height:1.9;}
+  .heroin .ver{top:96.4%;right:4%;font-size:2.6cqw;}
+  .coverbar{padding:12px 15px 0;font-size:12px;}
+  .coveraction{padding:18px 15px 34px;}
 }
 
 .codemsg{font-size:11.5px;color:var(--muted);margin-top:6px;}
@@ -95,7 +167,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
   flex:1;padding:9px 0;border-radius:999px;border:1px solid var(--line-2);
   background:#fff;cursor:pointer;font-weight:600;color:var(--muted);font-size:13.5px;}
 .authtabs button[aria-pressed="true"]{
-  background:var(--navy);border-color:var(--navy);color:#fff;}
+  background:var(--btn-g2);border-color:var(--btn-g2);color:#fff;}
 .authcard .field{margin-bottom:14px;}
 .authmsg{font-size:12.5px;margin-top:12px;min-height:18px;}
 .authmsg.err{color:var(--expense);}
@@ -119,41 +191,38 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .userlink{color:var(--gold-soft);font-size:13px;text-decoration:underline;
   text-underline-offset:3px;background:none;border:0;cursor:pointer;white-space:nowrap;}
 /* 대문 · 내 교회 현황 */
-#coverChurches{width:100%;max-width:880px;margin:0 auto 22px;}
+#coverChurches{width:100%;max-width:900px;margin:0 auto;}
 #coverChurches .ttl{
-  font-size:12px;color:#8B90A0;text-align:center;margin-bottom:10px;letter-spacing:.02em;}
+  font-size:12.5px;color:#7E8486;text-align:center;margin-bottom:12px;letter-spacing:.02em;}
 .chgrid{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
 .chcard{
-  flex:1 1 260px;max-width:340px;text-align:left;cursor:pointer;
-  background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.14);
-  border-radius:12px;padding:15px 17px;color:#E8E9ED;
-  transition:background .15s,border-color .15s;}
-.chcard:hover{background:rgba(255,255,255,.10);border-color:rgba(217,188,99,.5);}
-.chcard.on{border-color:var(--gold);background:rgba(200,160,42,.12);}
-.chcard .top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-.chcard .nm{font-size:16px;font-weight:700;letter-spacing:-0.03em;}
+  flex:1 1 270px;max-width:340px;text-align:left;cursor:pointer;
+  background:rgba(255,255,255,.86);border:1px solid rgba(18,78,67,.14);
+  border-radius:14px;padding:16px 18px;color:#2A3A35;
+  box-shadow:0 2px 10px rgba(18,78,67,.06);
+  transition:border-color .15s,box-shadow .15s,transform .1s;}
+.chcard:hover{border-color:rgba(45,127,101,.45);box-shadow:0 4px 16px rgba(18,78,67,.12);}
+.chcard:active{transform:translateY(1px);}
+.chcard.on{border-color:var(--btn-g1);background:#fff;
+  box-shadow:0 4px 18px rgba(18,78,67,.14);}
+.chcard .top{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap;}
+.chcard .nm{font-size:16.5px;font-weight:700;letter-spacing:-0.03em;color:var(--ink-g);}
 .chcard .badge2{
-  font-size:10.5px;padding:2px 8px;border-radius:999px;
-  background:var(--gold);color:#20180A;font-weight:700;}
+  font-size:10.5px;padding:2px 9px;border-radius:999px;
+  background:var(--btn-g1);color:#fff;font-weight:700;}
 .chcard .badge3{
-  font-size:10.5px;padding:2px 8px;border-radius:999px;
-  background:rgba(255,255,255,.14);color:#C9CCD6;}
-.chcard .wait{margin-left:auto;font-size:11px;color:#E8A9A0;}
-.chcard dl{display:flex;gap:16px;margin:0;flex-wrap:wrap;}
-.chcard dt{font-size:11px;color:#9CA0AE;margin-bottom:2px;}
-.chcard dd{margin:0;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;}
-.chcard dd.neg{color:#E8A9A0;}
-.chcard .go{
-  margin-top:11px;font-size:11.5px;color:var(--gold-soft);}
+  font-size:10.5px;padding:2px 9px;border-radius:999px;
+  background:#EAEFEC;color:#5E6B66;font-weight:600;}
+.chcard .wait{margin-left:auto;font-size:11px;color:#B23B2E;font-weight:600;}
+.chcard dl{display:flex;gap:18px;margin:0;flex-wrap:wrap;}
+.chcard dt{font-size:11px;color:#8E9894;margin-bottom:2px;}
+.chcard dd{margin:0;font-size:14.5px;font-weight:700;font-variant-numeric:tabular-nums;color:#2A3A35;}
+.chcard dd.neg{color:#B23B2E;}
+.chcard .go{margin-top:12px;font-size:11.5px;color:var(--btn-g1);font-weight:600;}
 @media (max-width:620px){
   .chcard{flex:1 1 100%;max-width:none;}
 }
 
-.coverbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
-.coveraction .enter.ghost{
-  background:transparent;color:var(--gold-soft);border:1px solid rgba(217,188,99,.55);
-  font-weight:600;}
-.coveraction .enter.ghost:hover{background:rgba(217,188,99,.12);}
 .churchsel{
   background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);
   color:#fff;padding:5px 9px;border-radius:6px;font-size:12.5px;max-width:160px;}
@@ -309,6 +378,20 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 .btn-full{width:100%;padding:15px;font-size:15px;}
 .btn-sm{padding:6px 13px;font-size:12.5px;}
 
+/* 처리 대기 안내 띠 */
+.alertbar{
+  width:100%;display:flex;align-items:center;gap:10px;text-align:left;
+  background:#FAF6EA;border:1px solid #E7DBB8;border-left:4px solid var(--gold);
+  border-radius:var(--r-card);padding:14px 18px;margin-bottom:14px;
+  cursor:pointer;font-size:14px;color:#6E5C2E;transition:background .15s;}
+.alertbar:hover{background:#F6F0E0;}
+.alertbar b{color:#4E401C;font-weight:700;}
+.alertbar .go2{margin-left:auto;font-size:12.5px;color:var(--gold-text);font-weight:600;white-space:nowrap;}
+@media (max-width:620px){
+  .alertbar{font-size:13px;padding:12px 14px;flex-wrap:wrap;}
+  .alertbar .go2{margin-left:0;width:100%;}
+}
+
 /* 특별예산 청구 */
 .badge{
   display:inline-block;margin-left:6px;min-width:18px;padding:1px 6px;border-radius:999px;
@@ -412,23 +495,40 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
 <!-- ===== 대문 ===== -->
 <div class="coverwrap" id="coverView">
   <div class="coverbar">
-    <span id="coverStatus"></span>
-    <button id="coverLogout" hidden>로그아웃</button>
+    <span class="chip" id="coverChip" hidden>
+      <span class="dot">●</span>
+      <span id="coverStatus"></span>
+      <span class="bar">|</span>
+      <button id="coverLogout">로그아웃</button>
+    </span>
   </div>
-  <div class="coverstage">
-    <img class="coverimg" id="coverImg" src="cover.jpg" alt="성산교회 재무관리 시스템">
-    <div class="coverfallback" id="coverFallback" hidden>
-      <b id="coverFallbackName">회계 이음</b>
-      <span>교회재무관리시스템</span>
+
+  <div class="hero" id="heroBox">
+    <div class="heroin">
+      <div class="eyebrow"><i></i>ACCOUNTING IEUM<i></i></div>
+      <h1 id="heroTitle">회계 이음</h1>
+      <div class="lead"><i></i><span id="heroLead">교회 재정을 한 눈에</span><i></i></div>
+      <div class="tag" id="heroTag">투명한 재정 · 정확한 관리 · 은혜로운 사역</div>
+      <div class="acts">
+        <button class="enter" id="btnEnter">들어가기 <span aria-hidden="true">→</span></button>
+        <button class="enter ghost" id="btnCoverSignup">회원가입</button>
+      </div>
+      <div class="hint" id="coverHint"></div>
+      <div class="foot">
+        <b>회계이음</b> · 교회를 잇고, 함께 세웁니다<br>
+        © 2026 회계이음 · 무단 복제 및 재배포 금지
+      </div>
+      <div class="ver">Ver. 1.0.0</div>
     </div>
   </div>
+
+  <div class="coverfallback" id="coverFallback" hidden>
+    <b id="coverFallbackName">회계 이음</b>
+    <span>교회재무관리시스템</span>
+  </div>
+
   <div class="coveraction">
     <div id="coverChurches" hidden></div>
-    <div class="coverbtns">
-      <button class="enter" id="btnEnter">들어가기</button>
-      <button class="enter ghost" id="btnCoverSignup">회원가입</button>
-    </div>
-    <span class="hint" id="coverHint"></span>
   </div>
 </div>
 
@@ -436,7 +536,7 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
 <div class="authwrap" id="authView" hidden>
   <div class="authcard">
     <h1 id="authTitle">부서 회계</h1>
-    <p class="sub" id="authSub">성산교회 교회학교 · 부서 살림의 기록과 흐름을 한 곳에</p>
+    <p class="sub" id="authSub">교회 재정을 한 눈에</p>
 
     <div class="authtabs">
       <button type="button" id="tabLogin" aria-pressed="true">로그인</button>
@@ -543,6 +643,7 @@ table.rt.detail tr.carryrow td{background:#FAF8F2;color:var(--muted);font-weight
   <div id="bootLoading" class="loading">장부를 불러오는 중…</div>
 
   <div id="appBody" hidden>
+    <button class="alertbar" id="alertBar" hidden></button>
     <div class="summary">
       <div class="scell"><span class="lab" id="lCarry">전기 이월금</span><span class="val num" id="sCarry">0원</span></div>
       <div class="scell"><span class="lab" id="lIn">연간 수입</span><span class="val num income" id="sIn">0원</span></div>
@@ -1774,6 +1875,29 @@ function reqSteps(r){
   ].join('');
 }
 
+/* 로그인 직후, 내가 처리할 청구가 있으면 안내 띠를 띄웁니다. */
+function renderAlertBar(rows){
+  const bar = $('#alertBar');
+  if(!bar) return;
+  const toApprove = rows.filter(r=> r.status==='requested' && r.can_approve);
+  const toPay     = ST.canPay ? rows.filter(r=> r.status==='approved') : [];
+  const mineBack  = rows.filter(r=>
+    r.status==='rejected' && ST.depts[r.dept_id]?.canWrite && !r.seen);
+
+  const parts = [];
+  if(toApprove.length) parts.push(`확인할 청구 <b>${toApprove.length}건</b>`);
+  if(toPay.length)     parts.push(`지급할 청구 <b>${toPay.length}건</b>`);
+  if(!parts.length){ bar.hidden = true; return; }
+
+  const sum = [...toApprove, ...toPay].reduce((s,r)=>s+r.amount, 0);
+  bar.innerHTML =
+    `<span>${parts.join(' · ')}이 있습니다` +
+    `<span style="color:#8B7A4E"> · 합계 ${won(sum)}</span></span>` +
+    `<span class="go2">바로 보기 →</span>`;
+  bar.hidden = false;
+}
+$('#alertBar').addEventListener('click', ()=> show('request'));
+
 async function renderRequests(){
   const area = $('#reqArea');
   area.innerHTML = '<div style="padding:24px;color:var(--muted);font-size:13px;text-align:center">불러오는 중…</div>';
@@ -1783,10 +1907,12 @@ async function renderRequests(){
     ({ data, error } = await sb.rpc('acct_req_list', { p_status: st || null }));
   }
   if(error){
+    $('#alertBar').hidden = true;
     area.innerHTML = `<div style="padding:24px;color:var(--expense);font-size:13px;text-align:center">${esc(error.message)}</div>`;
     return;
   }
   REQ_CACHE = data;
+  renderAlertBar(data);
   const rows = isAll() ? data : data.filter(r=> r.dept_id === cur.dept);
   const waiting = data.filter(r=>
     (r.status==='requested' && r.can_approve) || (r.status==='approved' && ST.canPay)).length;
@@ -1989,6 +2115,7 @@ async function reloadChurch(){
   cur.dept = null; cur.division = 'all'; cur.month = 'all';
   cur.cat = 'all'; cur.kfilter = 'all'; cur.rcpt = 'all'; cur.q = '';
   DIVISIONS = []; REQ_CACHE = []; ST.tx = [];
+  $('#alertBar').hidden = true;
   await loadSettings(true);
   await loadAll();
   await loadDivisions();
@@ -2186,7 +2313,6 @@ function applyNames(){
   $('#brandName').textContent = CFG.app_name;
   $('#brandSub').textContent  = `${CFG.church} ${CFG.group_name} · ${CFG.subtitle}`;
   $('#authTitle').textContent = CFG.app_name;
-  $('#authSub').textContent   = `${CFG.church} ${CFG.group_name} · ${CFG.subtitle}`;
   $('#coverFallbackName').textContent = CFG.app_name;
 }
 function renderNameForm(){
@@ -2636,21 +2762,26 @@ $('#view-setting').addEventListener('click', async e=>{
 });
 
 /* ═══════════ 대문 ═══════════ */
-$('#coverImg').addEventListener('error', ()=>{
-  $('#coverImg').hidden = true;
-  $('#coverFallback').hidden = false;
-});
+/* 배경 그림을 못 불러오면 글자만이라도 보이게 합니다. */
+(function(){
+  const probe = new Image();
+  probe.onerror = ()=>{
+    const h = $('#heroBox');
+    if(h) h.style.background = 'linear-gradient(180deg,#F6F5EF,#E8EDE9)';
+  };
+  probe.src = 'cover.jpg';
+})();
 function showCover(){
   $('#coverView').hidden = false;
   $('#authView').hidden = true;
   $('#appView').hidden = true;
   const name = (SESSION?.user?.email || '').split('@')[0];
+  $('#coverChip').hidden = !SESSION;
   $('#coverStatus').textContent = SESSION ? `${name}님 환영합니다` : '';
-  $('#coverLogout').hidden = !SESSION;
-  $('#btnEnter').textContent = SESSION ? '들어가기' : '로그인';
+  $('#btnEnter').innerHTML = (SESSION ? '들어가기' : '로그인') + ' <span aria-hidden="true">→</span>';
   $('#btnCoverSignup').hidden = !!SESSION;
   $('#coverHint').textContent = SESSION
-    ? '' : '처음이시면 회원가입에서 교회를 선택하거나 새로 등록하세요';
+    ? '' : '처음이시면 회원가입에서 가입 코드를 넣거나 교회를 새로 시작하세요';
   if(SESSION) renderCoverChurches(); else $('#coverChurches').hidden = true;
   window.scrollTo(0,0);
 }
