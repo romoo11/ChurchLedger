@@ -29,7 +29,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 /* 로그인 */
 .authwrap{
   min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
-  background:#EEF1EC url('cover.jpg') center/cover no-repeat;}
+  background:#EEF1EC url('cover-v2.jpg') center/cover no-repeat;}
 .authwrap::before{
   content:'';position:fixed;inset:0;background:rgba(243,241,234,.62);
   backdrop-filter:blur(7px);z-index:0;}
@@ -78,7 +78,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 /* 그림 비율을 그대로 지켜 글자가 그림 요소와 어긋나지 않게 합니다 */
 .hero{
   position:relative;width:100%;max-width:1672px;aspect-ratio:1672/941;
-  background:url('cover.jpg') center/100% 100% no-repeat;
+  background:url('cover-v2.jpg') center/100% 100% no-repeat;
 }
 .heroin{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
@@ -134,7 +134,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 
 /* 좁은 화면에서는 세로로 자른 그림을 씁니다 */
 @media (max-width:700px){
-  .hero{aspect-ratio:677/941;background-image:url('cover-m.jpg');}
+  .hero{aspect-ratio:677/941;background-image:url('cover-m-v2.jpg');}
   .heroin .eyebrow{top:38.7%;font-size:2.6cqw;letter-spacing:.3em;gap:2.4cqw;}
   .heroin .eyebrow i{width:7.5cqw;}
   .heroin h1{top:45.8%;font-size:15.5cqw;}
@@ -2769,7 +2769,7 @@ $('#view-setting').addEventListener('click', async e=>{
     const h = $('#heroBox');
     if(h) h.style.background = 'linear-gradient(180deg,#F6F5EF,#E8EDE9)';
   };
-  probe.src = 'cover.jpg';
+  probe.src = 'cover-v2.jpg';
 })();
 function showCover(){
   $('#coverView').hidden = false;
